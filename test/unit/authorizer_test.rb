@@ -317,6 +317,22 @@ class AuthorizerTest < ActiveSupport::TestCase
     assert_equal expected, result
   end
 
+  test "#authorization_search_metrics reports grouped filter count for equivalent taxonomy scopes" do
+    user = FactoryBot.create(:user)
+    auth = Authorizer.new(user)
+    filter_one = FactoryBot.build_stubbed(:filter, :on_name_all, :taxonomy_search => 'organization_id ^ (3,1,2)')
+    filter_two = FactoryBot.build_stubbed(:filter, :on_name_starting_with_a, :taxonomy_search => 'organization_id ^ (1,2,3)')
+
+    filter_one.stubs(:taxonomy_search_condition_for_user).with(user, filter_one.taxonomy_search).returns(['organization_id ^ (3,1,2)'])
+    filter_two.stubs(:taxonomy_search_condition_for_user).with(user, filter_two.taxonomy_search).returns(['organization_id ^ (1,2,3)'])
+
+    metrics = auth.send(:authorization_search_metrics, [filter_one, filter_two], 'name ~ test')
+
+    assert_equal 2, metrics[:filter_count]
+    assert_equal 1, metrics[:grouped_filter_count]
+    assert_equal 11, metrics[:search_length]
+  end
+
   test "#build_filtered_scope_components denies access when authorization search exceeds max length" do
     auth = Authorizer.new(@user)
     logger = mock

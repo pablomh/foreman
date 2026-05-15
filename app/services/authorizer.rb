@@ -106,6 +106,8 @@ class Authorizer
 
     search_string = build_scoped_search_condition(all_filters)
     return result if search_string.blank?
+
+    metrics = authorization_search_metrics(all_filters, search_string)
     if search_string.length > MAX_AUTHORIZATION_SEARCH_LENGTH
       deny_authorization_due_to_complex_search(result,
         "Authorization search expression too large (#{search_string.length} chars, " \
@@ -116,7 +118,9 @@ class Authorizer
     end
 
     begin
+      build_started_at = Process.clock_gettime(Process::CLOCK_MONOTONIC)
       find_options = ScopedSearch::QueryBuilder.build_query(resource_class.scoped_search_definition, search_string, options)
+      log_authorization_search_metrics(resource_class, metrics, build_query_ms: elapsed_milliseconds_since(build_started_at))
 
       result[:where] << find_options[:conditions]
       includes = Array.wrap(find_options[:include]) - [:organizations, :locations]
@@ -177,11 +181,15 @@ class Authorizer
   def grouped_granular_filter_conditions(filters)
     return nil if filters.any? { |filter| filter.taxonomy_search.blank? && filter.search.blank? }
 
-    grouped_conditions = filters.group_by { |filter| normalized_granular_filter_group_key(filter) }.map do |_group_key, grouped_filters|
+    grouped_conditions = grouped_granular_filters(filters).map do |grouped_filters|
       build_grouped_granular_filter_condition(grouped_filters, grouped_filters.first.taxonomy_search)
     end
 
     QueryBuilder.join('OR', grouped_conditions)
+  end
+
+  def grouped_granular_filters(filters)
+    filters.group_by { |filter| normalized_granular_filter_group_key(filter) }.values
   end
 
   def build_grouped_granular_filter_condition(filters, taxonomy_search)
@@ -203,12 +211,38 @@ class Authorizer
     end
   end
 
+  def authorization_search_metrics(filters, search_string)
+    metrics = {
+      filter_count: filters.size,
+      search_length: search_string.length,
+    }
+    metrics[:grouped_filter_count] = grouped_granular_filters(filters).size if filters.all?(&:granular?)
+    metrics
+  end
+
+  def log_authorization_search_metrics(resource_class, metrics, build_query_ms:)
+    Foreman::Logging.logger('permissions').debug do
+      parts = [
+        "authorization search metrics for #{resource_class.name}",
+        "filters=#{metrics[:filter_count]}",
+        "search_length=#{metrics[:search_length]}",
+        "build_query_ms=#{format('%.1f', build_query_ms)}",
+      ]
+      parts << "grouped_filters=#{metrics[:grouped_filter_count]}" if metrics.key?(:grouped_filter_count)
+      parts.join(', ')
+    end
+  end
+
   def normalize_taxonomy_group_condition(condition)
     matches = condition.to_s.match(/\A(?<key>\w+_id) \^ \((?<ids>[\d,\s]+)\)\z/)
     return condition if matches.blank?
 
     ids = matches[:ids].split(',').map(&:to_i).uniq.sort
     QueryBuilder.key_value_in(matches[:key], ids)
+  end
+
+  def elapsed_milliseconds_since(started_at)
+    (Process.clock_gettime(Process::CLOCK_MONOTONIC) - started_at) * 1000.0
   end
 
   def allowed_organizations(resource_class)
