@@ -9,6 +9,36 @@ class Api::V2::FiltersControllerTest < ActionController::TestCase
     assert !filters.empty?
   end
 
+  test "index reuses preauthorized role taxonomies" do
+    organization = FactoryBot.create(:organization)
+    location = FactoryBot.create(:location)
+    role = FactoryBot.create(:role, :name => "filter_taxonomy_role")
+    role.organizations = [organization]
+    role.locations = [location]
+    role.add_permissions!([:view_filters, :view_locations, :view_organizations, :view_architectures])
+
+    user = FactoryBot.create(:user, :organizations => [organization], :locations => [location])
+    role.users << user
+    role.save!
+
+    filter = FactoryBot.create(:filter, :role => role, :permissions => [permissions(:view_architectures)])
+
+    Location.expects(:authorized_as).never
+    Organization.expects(:authorized_as).never
+
+    as_user(user) do
+      get :index
+      assert_response :success
+    end
+
+    response_body = ActiveSupport::JSON.decode(@response.body)
+    matching_filter = response_body['results'].detect { |item| item['id'] == filter.id }
+
+    assert_not_nil matching_filter
+    assert_equal [location.id], matching_filter.dig('role', 'locations').map { |taxonomy| taxonomy['id'] }
+    assert_equal [organization.id], matching_filter.dig('role', 'organizations').map { |taxonomy| taxonomy['id'] }
+  end
+
   test "should show individual record" do
     get :show, params: { :id => filters(:manager_1).to_param }
     assert_response :success
