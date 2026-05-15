@@ -128,10 +128,12 @@ class Authorizer
 
     result[:where] << { id: base_ids } if @base_collection.present?
 
-    search_string = build_scoped_search_condition(all_filters)
+    build_search_started_at = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+    search_string = build_scoped_search_condition(all_filters, resource_class)
+    result[:metrics][:build_scoped_search_condition_ms] = elapsed_milliseconds_since(build_search_started_at)
     return result if search_string.blank?
 
-    metrics = authorization_search_metrics(all_filters, search_string)
+    metrics = authorization_search_metrics(all_filters, search_string, resource_class)
     if search_string.length > MAX_AUTHORIZATION_SEARCH_LENGTH
       deny_authorization_due_to_complex_search(result,
         "Authorization search expression too large (#{search_string.length} chars, " \
@@ -165,10 +167,10 @@ class Authorizer
     result
   end
 
-  def build_scoped_search_condition(filters)
+  def build_scoped_search_condition(filters, resource_class = nil)
     raise ArgumentError if filters.blank?
 
-    if filters.all?(&:granular?)
+    if granular_filter_resource?(resource_class, filters)
       # All the filters support granular filtering
       #
       # This means we can build a simplified query by OR-ing all the per-filter
@@ -236,12 +238,12 @@ class Authorizer
     end
   end
 
-  def authorization_search_metrics(filters, search_string)
+  def authorization_search_metrics(filters, search_string, resource_class = nil)
     metrics = {
       filter_count: filters.size,
       search_length: search_string.length,
     }
-    metrics[:grouped_filter_count] = grouped_granular_filters(filters).size if filters.all?(&:granular?)
+    metrics[:grouped_filter_count] = grouped_granular_filters(filters).size if granular_filter_resource?(resource_class, filters)
     metrics
   end
 
@@ -257,6 +259,7 @@ class Authorizer
         "taxonomy_filter_ms=#{format_metric_duration(metrics[:taxonomy_filter_ms])}",
         "filter_load_ms=#{format_metric_duration(metrics[:filter_load_ms])}",
         "scope_components_ms=#{format_metric_duration(metrics[:scope_components_ms])}",
+        "build_scoped_search_condition_ms=#{format_metric_duration(metrics[:build_scoped_search_condition_ms])}",
         "scope_build_ms=#{format_metric_duration(metrics[:scope_build_ms])}",
         "total_ms=#{format_metric_duration(metrics[:total_ms])}",
       ]
@@ -273,6 +276,17 @@ class Authorizer
 
     ids = matches[:ids].split(',').map(&:to_i).uniq.sort
     QueryBuilder.key_value_in(matches[:key], ids)
+  end
+
+  def granular_filter_resource?(resource_class, filters)
+    return filters.all?(&:granular?) if resource_class.nil?
+
+    filter_resource_type = resource_name(resource_class)
+    filter_resource_class = Filter.get_resource_class(filter_resource_type)
+    return false if filter_resource_class.nil?
+    return true if filter_resource_type == 'Host'
+
+    filter_resource_class.included_modules.include?(Authorizable) && filter_resource_class.respond_to?(:search_for)
   end
 
   def elapsed_milliseconds_since(started_at)

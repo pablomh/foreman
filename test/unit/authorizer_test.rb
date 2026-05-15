@@ -317,6 +317,28 @@ class AuthorizerTest < ActiveSupport::TestCase
     assert_equal expected, result
   end
 
+  test "#build_scoped_search_condition uses resource class granularity without checking every filter" do
+    user = FactoryBot.create(:user)
+    auth = Authorizer.new(user)
+    filter_one = FactoryBot.build_stubbed(:filter, :on_name_all, :taxonomy_search => 'organization_id ^ (1,2,3)')
+    filter_two = FactoryBot.build_stubbed(:filter, :on_name_starting_with_a, :taxonomy_search => 'organization_id ^ (1,2,3)')
+
+    filter_two.expects(:granular?).never
+
+    result = auth.build_scoped_search_condition([filter_one, filter_two], Host::Managed)
+
+    expected_base = QueryBuilder.join('AND', [
+      QueryBuilder.join('OR', ['name ~ *', 'name ~ a*']),
+      filter_one.taxonomy_search,
+    ])
+    expected = QueryBuilder.join('AND', [
+      expected_base,
+      QueryBuilder.join('AND', filter_one.taxonomy_search_condition_for_user(user)),
+    ])
+
+    assert_equal expected, result
+  end
+
   test "#authorization_search_metrics reports grouped filter count for equivalent taxonomy scopes" do
     user = FactoryBot.create(:user)
     auth = Authorizer.new(user)
@@ -326,7 +348,7 @@ class AuthorizerTest < ActiveSupport::TestCase
     filter_one.stubs(:taxonomy_search_condition_for_user).with(user, filter_one.taxonomy_search).returns(['organization_id ^ (3,1,2)'])
     filter_two.stubs(:taxonomy_search_condition_for_user).with(user, filter_two.taxonomy_search).returns(['organization_id ^ (1,2,3)'])
 
-    metrics = auth.send(:authorization_search_metrics, [filter_one, filter_two], 'name ~ test')
+    metrics = auth.send(:authorization_search_metrics, [filter_one, filter_two], 'name ~ test', Host::Managed)
 
     assert_equal 2, metrics[:filter_count]
     assert_equal 1, metrics[:grouped_filter_count]
