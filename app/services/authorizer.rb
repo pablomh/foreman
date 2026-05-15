@@ -1,6 +1,8 @@
 class Authorizer
   include AuthorizerCache
 
+  MAX_AUTHORIZATION_SEARCH_LENGTH = 65_536
+
   attr_reader :user
   attr_accessor :base_collection, :organization_ids, :location_ids
 
@@ -104,6 +106,14 @@ class Authorizer
 
     search_string = build_scoped_search_condition(all_filters)
     return result if search_string.blank?
+    if search_string.length > MAX_AUTHORIZATION_SEARCH_LENGTH
+      deny_authorization_due_to_complex_search(result,
+        "Authorization search expression too large (#{search_string.length} chars, " \
+        "#{all_filters.size} filters) for #{resource_class.name} - denying access. " \
+        "Consider reducing the number of roles, filters, or taxonomy assignments for user '#{user.login}'.",
+        :warn)
+      return result
+    end
 
     begin
       find_options = ScopedSearch::QueryBuilder.build_query(resource_class.scoped_search_definition, search_string, options)
@@ -115,6 +125,12 @@ class Authorizer
     rescue ScopedSearch::QueryNotSupported => e
       Foreman::Logging.logger('permissions').error "Scoped search query not supported: #{e.message}"
       result[:where] << '1=0' unless user.admin?
+    rescue SystemStackError
+      deny_authorization_due_to_complex_search(result,
+        "Authorization search expression caused stack overflow (#{search_string.length} chars, " \
+        "#{all_filters.size} filters) for #{resource_class.name} - denying access. " \
+        "The scoped search expression is too deeply nested. " \
+        "Consider reducing the number of roles, filters, or taxonomy assignments for user '#{user.login}'.")
     end
 
     result
@@ -130,13 +146,13 @@ class Authorizer
       # searches together and then AND-ing a single check for user's taxonomies
 
       # Do not do any scoping if there's a filter which grants the permission universally
-      base_conditions = filters.any? { |f| f.taxonomy_search.nil? && f.search.nil? } ? [] : filters.map(&:search_condition)
+      base_conditions = grouped_granular_filter_conditions(filters)
       tax_conditions = filters.first.taxonomy_search_condition_for_user(@user)
 
       QueryBuilder.join(
         'AND',
         [
-          QueryBuilder.join('OR', base_conditions),
+          base_conditions,
           QueryBuilder.join('AND', tax_conditions),
         ])
     else
@@ -152,6 +168,48 @@ class Authorizer
   end
 
   private
+
+  def deny_authorization_due_to_complex_search(result, message, level = :error)
+    Foreman::Logging.logger('permissions').public_send(level, message)
+    result[:where] << '1=0'
+  end
+
+  def grouped_granular_filter_conditions(filters)
+    return nil if filters.any? { |filter| filter.taxonomy_search.blank? && filter.search.blank? }
+
+    grouped_conditions = filters.group_by { |filter| normalized_granular_filter_group_key(filter) }.map do |_group_key, grouped_filters|
+      build_grouped_granular_filter_condition(grouped_filters, grouped_filters.first.taxonomy_search)
+    end
+
+    QueryBuilder.join('OR', grouped_conditions)
+  end
+
+  def build_grouped_granular_filter_condition(filters, taxonomy_search)
+    return taxonomy_search if filters.any? { |filter| filter.search.blank? }
+
+    searches = filters.map(&:search).uniq
+    search_condition = QueryBuilder.join('OR', searches)
+    return search_condition if taxonomy_search.blank?
+
+    QueryBuilder.join('AND', [search_condition, taxonomy_search])
+  end
+
+  def normalized_granular_filter_group_key(filter)
+    @normalized_group_keys ||= {}
+    cache_key = filter.taxonomy_search.presence
+
+    @normalized_group_keys[cache_key] ||= filter.taxonomy_search_condition_for_user(@user, filter.taxonomy_search).map do |condition|
+      normalize_taxonomy_group_condition(condition)
+    end
+  end
+
+  def normalize_taxonomy_group_condition(condition)
+    matches = condition.to_s.match(/\A(?<key>\w+_id) \^ \((?<ids>[\d,\s]+)\)\z/)
+    return condition if matches.blank?
+
+    ids = matches[:ids].split(',').map(&:to_i).uniq.sort
+    QueryBuilder.key_value_in(matches[:key], ids)
+  end
 
   def allowed_organizations(resource_class)
     allowed_taxonomies(resource_class, 'organization')
