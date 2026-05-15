@@ -221,7 +221,7 @@ class Authorizer
   end
 
   def log_authorization_search_metrics(resource_class, metrics, build_query_ms:)
-    Foreman::Logging.logger('permissions').debug do
+    Foreman::Logging.logger('permissions').info do
       parts = [
         "authorization search metrics for #{resource_class.name}",
         "filters=#{metrics[:filter_count]}",
