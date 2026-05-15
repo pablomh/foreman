@@ -219,13 +219,11 @@ class Authorizer
   end
 
   def taxonomy_cache_key(resource_class, type)
-    current_scope = if resource_class.respond_to?("which_#{type}")
-                      Array(resource_class.public_send("which_#{type}")).map { |taxonomy| taxonomy.respond_to?(:id) ? taxonomy.id : taxonomy }.sort
-                    else
-                      []
-                    end
+    current_scope = Array(resource_class.instance_variable_get(:"@which_#{type}"))
+      .map { |taxonomy| taxonomy.respond_to?(:id) ? taxonomy.id : taxonomy }
+      .sort
 
-    [resource_class.name, type, resource_class.try(:which_ancestry_method), current_scope]
+    [resource_class.name, type, resource_class.instance_variable_get(:@which_ancestry_method), current_scope]
   end
 
   def base_ids
