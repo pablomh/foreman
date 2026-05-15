@@ -58,8 +58,43 @@ module Taxonomix
     end
 
     def get_taxonomy_ids(taxonomy, method)
-      Array(taxonomy).map { |t| t.send(method) + t.ancestor_ids }.flatten.uniq
+      taxonomies = Array(taxonomy).compact
+      return [] if taxonomies.empty?
+      return fallback_taxonomy_ids(taxonomies, method) unless batch_taxonomy_ids?(taxonomies, method)
+
+      ancestry_by_id = taxonomies.first.class.unscoped.pluck(:id, :ancestry).to_h
+      selected_ids = taxonomies.map(&:id)
+      ancestor_ids = selected_ids.flat_map { |id| ancestry_ids_from_string(ancestry_by_id[id]) }
+
+      expanded_ids = case method.to_sym
+                     when :path_ids
+                       selected_ids
+                     when :subtree_ids
+                       selected_lookup = selected_ids.index_with(true)
+                       ancestry_by_id.each_with_object([]) do |(id, ancestry), ids|
+                         path_ids = ancestry_ids_from_string(ancestry)
+                         ids << id if selected_lookup.key?(id) || path_ids.any? { |ancestor_id| selected_lookup.key?(ancestor_id) }
+                       end
+                     end
+
+      (expanded_ids + ancestor_ids).uniq
     end
+
+    def batch_taxonomy_ids?(taxonomies, method)
+      [:path_ids, :subtree_ids].include?(method.to_sym) &&
+        taxonomies.all?(&:persisted?) &&
+        taxonomies.all? { |taxonomy| taxonomy.is_a?(Taxonomy) && taxonomy.class == taxonomies.first.class }
+    end
+
+    def fallback_taxonomy_ids(taxonomies, method)
+      taxonomies.flat_map { |taxonomy| taxonomy.public_send(method) + taxonomy.ancestor_ids }.uniq
+    end
+
+    def ancestry_ids_from_string(ancestry)
+      ancestry.to_s.split('/').reject(&:blank?).map(&:to_i)
+    end
+
+    private :batch_taxonomy_ids?, :fallback_taxonomy_ids, :ancestry_ids_from_string
 
     def taxable_ids(loc = which_location, org = which_organization, inner_method = which_ancestry_method)
       # Return everything (represented by nil), including objects without

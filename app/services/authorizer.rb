@@ -8,6 +8,7 @@ class Authorizer
     initialize_cache
     @user = user
     @base_collection = options.delete(:collection)
+    @used_taxonomy_ids_cache = {}
   end
 
   # Check if the current user has a specific permission on the subject.
@@ -177,11 +178,13 @@ class Authorizer
   end
 
   def used_taxonomy_ids_for(resource_class, type)
-    taxonomy_ids = resource_class.send("used_#{type}_ids")
-    if taxonomy_ids.empty? && !user.try(:admin?)
-      taxonomy_ids = user.try("#{type}_ids")
+    @used_taxonomy_ids_cache[taxonomy_cache_key(resource_class, type)] ||= begin
+      taxonomy_ids = resource_class.send("used_#{type}_ids")
+      if taxonomy_ids.empty? && !user.try(:admin?)
+        taxonomy_ids = user.try("#{type}_ids")
+      end
+      taxonomy_ids
     end
-    taxonomy_ids
   end
 
   def taxonomy_join
@@ -213,6 +216,16 @@ class Authorizer
 
   def resource_name(klass)
     Permission.resource_name(klass)
+  end
+
+  def taxonomy_cache_key(resource_class, type)
+    current_scope = if resource_class.respond_to?("which_#{type}")
+                      Array(resource_class.public_send("which_#{type}")).map { |taxonomy| taxonomy.respond_to?(:id) ? taxonomy.id : taxonomy }.sort
+                    else
+                      []
+                    end
+
+    [resource_class.name, type, resource_class.try(:which_ancestry_method), current_scope]
   end
 
   def base_ids
