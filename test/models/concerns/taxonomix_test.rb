@@ -172,6 +172,57 @@ class TaxonomixTest < ActiveSupport::TestCase
     assert_includes used_locations, loc4.id
   end
 
+  test ".used_location_ids batches ancestry expansion queries" do
+    loc1 = FactoryBot.create(:location)
+    loc2 = FactoryBot.create(:location, :parent_id => loc1.id)
+    loc3 = FactoryBot.create(:location, :parent_id => loc2.id)
+    loc4 = FactoryBot.create(:location)
+    dummy_class = @dummy.class
+    dummy_class.which_ancestry_method = :subtree_ids
+    dummy_class.which_location = [loc2, loc4]
+
+    used_locations = nil
+    assert_sql_queries(1, /SELECT/) do
+      used_locations = dummy_class.used_location_ids
+    end
+
+    assert_includes used_locations, loc1.id
+    assert_includes used_locations, loc2.id
+    assert_includes used_locations, loc3.id
+    assert_includes used_locations, loc4.id
+  end
+
+  test ".used_location_ids with path_ids includes selected locations and their ancestors" do
+    loc1 = FactoryBot.create(:location)
+    loc2 = FactoryBot.create(:location, :parent_id => loc1.id)
+    loc3 = FactoryBot.create(:location, :parent_id => loc2.id)
+    dummy_class = @dummy.class
+    dummy_class.which_ancestry_method = :path_ids
+    dummy_class.which_location = [loc3]
+
+    used_locations = dummy_class.used_location_ids
+
+    assert_includes used_locations, loc1.id
+    assert_includes used_locations, loc2.id
+    assert_includes used_locations, loc3.id
+  end
+
+  test ".used_location_ids falls back for unpersisted locations" do
+    loc1 = FactoryBot.create(:location)
+    loc2 = FactoryBot.create(:location, :parent_id => loc1.id)
+    unpersisted_location = Location.new(:name => 'transient-location')
+    dummy_class = @dummy.class
+    dummy_class.which_ancestry_method = :subtree_ids
+    dummy_class.which_location = [loc2, unpersisted_location]
+
+    Location.expects(:unscoped).never
+
+    used_locations = dummy_class.used_location_ids
+
+    assert_includes used_locations, loc1.id
+    assert_includes used_locations, loc2.id
+  end
+
   test ".used_organization_ids can work with array of organizations" do
     org1 = FactoryBot.create(:organization)
     org2 = FactoryBot.create(:organization, :parent_id => org1.id)
@@ -197,6 +248,41 @@ class TaxonomixTest < ActiveSupport::TestCase
     assert_includes used_organizations, org2.id
     assert_includes used_organizations, org3.id
     assert_includes used_organizations, org4.id
+  end
+
+  test ".used_organization_ids batches ancestry expansion queries" do
+    org1 = FactoryBot.create(:organization)
+    org2 = FactoryBot.create(:organization, :parent_id => org1.id)
+    org3 = FactoryBot.create(:organization, :parent_id => org2.id)
+    org4 = FactoryBot.create(:organization)
+    dummy_class = @dummy.class
+    dummy_class.which_ancestry_method = :subtree_ids
+    dummy_class.which_organization = [org2, org4]
+
+    used_organizations = nil
+    assert_sql_queries(1, /SELECT/) do
+      used_organizations = dummy_class.used_organization_ids
+    end
+
+    assert_includes used_organizations, org1.id
+    assert_includes used_organizations, org2.id
+    assert_includes used_organizations, org3.id
+    assert_includes used_organizations, org4.id
+  end
+
+  test ".used_organization_ids with path_ids includes selected organizations and their ancestors" do
+    org1 = FactoryBot.create(:organization)
+    org2 = FactoryBot.create(:organization, :parent_id => org1.id)
+    org3 = FactoryBot.create(:organization, :parent_id => org2.id)
+    dummy_class = @dummy.class
+    dummy_class.which_ancestry_method = :path_ids
+    dummy_class.which_organization = [org3]
+
+    used_organizations = dummy_class.used_organization_ids
+
+    assert_includes used_organizations, org1.id
+    assert_includes used_organizations, org2.id
+    assert_includes used_organizations, org3.id
   end
 
   describe '#taxable_ids' do

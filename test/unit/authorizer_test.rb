@@ -194,9 +194,43 @@ class AuthorizerTest < ActiveSupport::TestCase
             auth       = Authorizer.new(@user)
             assert auth.can?(:edit_subnets, subnet, cache)
           end
+
         end
       end
     end
+  end
+
+  test "memoizes used taxonomies per resource class" do
+    Host.expects(:used_organization_ids).once.returns([taxonomies(:organization1).id])
+    Host.expects(:used_location_ids).once.returns([taxonomies(:location1).id])
+    auth = Authorizer.new(@user)
+
+    auth.find_collection(Host, :permission => :view_hosts)
+    auth.find_collection(Host, :permission => :edit_hosts)
+  end
+
+  test "memoization cache key does not invoke unrelated which_location methods" do
+    resource_class = Class.new do
+      def self.name
+        'FakeScopedResource'
+      end
+
+      def self.allows_taxonomy_filtering?(taxonomy)
+        taxonomy == 'location_id'
+      end
+
+      def self.used_location_ids
+        []
+      end
+
+      def self.which_location
+        raise 'should not be called'
+      end
+    end
+
+    auth = Authorizer.new(@user)
+
+    assert_equal [], auth.send(:used_taxonomy_ids_for, resource_class, 'location')
   end
 
   test "#build_scoped_search_condition(filters) for empty set" do

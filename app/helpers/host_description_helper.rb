@@ -85,20 +85,27 @@ module HostDescriptionHelper
     fields
   end
 
+  def host_action_authorizer(host)
+    @host_action_authorizers ||= {}
+    @host_action_authorizers[host.id] ||= Authorizer.new(User.current, :collection => [host])
+  end
+
   def base_host_title_actions(host)
+    authorizer = host_action_authorizer(host)
+
     [
       {
         :action => button_group(
-          link_to_if_authorized(_("Edit"), hash_for_edit_host_path(:id => host).merge(:auth_object => host),
+          link_to_if_authorized(_("Edit"), hash_for_edit_host_path(:id => host).merge(:auth_object => host, :authorizer => authorizer),
             :title    => _("Edit this host"), :id => "edit-button", :class => 'btn btn-default'),
-          display_link_if_authorized(_("Clone"), hash_for_clone_host_path(:id => host).merge(:auth_object => host, :permission => 'create_hosts'),
+          display_link_if_authorized(_("Clone"), hash_for_clone_host_path(:id => host).merge(:auth_object => host, :authorizer => authorizer, :permission => 'create_hosts'),
             :title    => _("Clone this host"), :id => "clone-button", :class => 'btn btn-default'),
           if host.build
-            link_to_if_authorized(_("Cancel build"), hash_for_cancelBuild_host_path(:id => host).merge(:auth_object => host, :permission => 'build_hosts'),
+            link_to_if_authorized(_("Cancel build"), hash_for_cancelBuild_host_path(:id => host).merge(:auth_object => host, :authorizer => authorizer, :permission => 'build_hosts'),
               :disabled => host.can_be_built?,
               :title    => _("Cancel build request for this host"), :id => "cancel-build-button", :class => 'btn btn-default')
           else
-            link_to_if_authorized(_("Build"), hash_for_host_path(:id => host).merge(:auth_object => host, :permission => 'build_hosts', :anchor => "review_before_build"),
+            link_to_if_authorized(_("Build"), hash_for_host_path(:id => host).merge(:auth_object => host, :authorizer => authorizer, :permission => 'build_hosts', :anchor => "review_before_build"),
               :disabled => !host.can_be_built?,
               :title    => _("Enable rebuild on next host boot"),
               :class    => "btn btn-default",
@@ -120,7 +127,7 @@ module HostDescriptionHelper
       end,
       {
         :action => button_group(
-          link_to_if_authorized(_("Delete"), hash_for_host_path(:id => host).merge(:auth_object => host, :permission => 'destroy_hosts'),
+          link_to_if_authorized(_("Delete"), hash_for_host_path(:id => host).merge(:auth_object => host, :authorizer => authorizer, :permission => 'destroy_hosts'),
             :class => "btn btn-danger",
             :id => "delete-button",
             :data => { :message => delete_host_dialog(host) },
