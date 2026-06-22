@@ -134,6 +134,15 @@ class FactImporterTest < ActiveSupport::TestCase
       assert_equal 1, importer.counters[:added]
     end
 
+    test 'bulk inserted facts set host and timestamps' do
+      default_import 'foo' => 'bar', 'kernelversion' => '2.6.9', 'ipaddress' => '10.0.19.33'
+
+      imported_fact = fact_value('foo')
+      assert_equal host.id, imported_fact.host_id
+      assert_not_nil imported_fact.created_at
+      assert_not_nil imported_fact.updated_at
+    end
+
     test 'importer removes deleted facts' do
       default_import 'ipaddress' => '10.0.19.33'
       assert_nil value('kernelversion')
@@ -141,6 +150,25 @@ class FactImporterTest < ActiveSupport::TestCase
       assert_equal 1, importer.counters[:deleted]
       assert_equal 0, importer.counters[:updated]
       assert_equal 0, importer.counters[:added]
+    end
+
+    test 'additive import preserves existing facts not in the new set' do
+      # baseline: two facts in DB
+      assert_equal '2.6.9', value('kernelversion')
+      assert_equal '10.0.19.33', value('ipaddress')
+
+      # additive import of a single new fact — existing facts must survive
+      @importer = FactImporter.new(host, 'uptime' => '1 day')
+      allow_transactions_for @importer
+      @importer.stubs(:fact_name_class).returns(FactName)
+      @importer.import!(additive: true)
+
+      assert_equal '2.6.9', value('kernelversion')
+      assert_equal '10.0.19.33', value('ipaddress')
+      assert_equal '1 day', value('uptime')
+      assert_equal 0, @importer.counters[:deleted]
+      assert_equal 1, @importer.counters[:added]
+      assert_equal 0, @importer.counters[:updated]
     end
 
     test 'importer updates fact values' do
@@ -250,7 +278,11 @@ class FactImporterTest < ActiveSupport::TestCase
     @importer.import!
   end
 
+  def fact_value(fact)
+    FactValue.joins(:fact_name).where(:host_id => host.id, :fact_names => { :name => fact }).first
+  end
+
   def value(fact)
-    FactValue.joins(:fact_name).where(:host_id => host.id, :fact_names => { :name => fact }).first.try(:value)
+    fact_value(fact).try(:value)
   end
 end

@@ -299,7 +299,7 @@ class Operatingsystem < ApplicationRecord
 
   def self.deduce_family(name)
     families.find do |f|
-      name =~ FAMILIES[f]
+      FAMILIES[f].match?(name)
     end
   end
 

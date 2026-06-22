@@ -7,9 +7,11 @@ module Net
     MAC_REGEXP ||= /\A([a-f0-9]{1,2}:){5}[a-f0-9]{1,2}\z/i
     MAC_REGEXP_64BIT ||= /\A([a-f0-9]{1,2}:){19}[a-f0-9]{1,2}\z/i
     HOST_REGEXP ||= /\A(([a-z0-9]|[a-z0-9][a-z0-9\-]*[a-z0-9])\.)*([a-z0-9]|[a-z0-9][a-z0-9\-]*[a-z0-9])\z/
+    DOMAIN_NAME_REGEXP ||= /\A(([a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9\-]*[a-zA-Z0-9])\.)*([a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9\-]*[a-zA-Z0-9])\z/
     MASK_REGEXP ||= /\A((255.){3}(0|128|192|224|240|248|252|254))|((255.){2}(0|128|192|224|240|248|252|254).0)|(255.(0|128|192|224|240|248|252|254)(.0){2})|((128|192|224|240|248|252|254)(.0){3})\z/
 
     HOST_REGEXP_ERR_MSG = N_("hostname can contain only lowercase letters, numbers, dashes and dots according to RFC921, RFC952 and RFC1123")
+    DOMAIN_NAME_FORMAT_ERR_MSG = N_("domain name can contain only letters, numbers, dashes and dots according to RFC 1035 and RFC 2181")
 
     class Error < RuntimeError
     end
@@ -42,7 +44,7 @@ module Net
 
     # validates a network mask
     def self.validate_mask(mask)
-      mask =~ MASK_REGEXP
+      MASK_REGEXP.match?(mask)
     end
 
     # validates a network mask and raises an error
@@ -88,7 +90,7 @@ module Net
 
     # validates the hostname
     def self.validate_hostname(hostname)
-      hostname =~ HOST_REGEXP
+      HOST_REGEXP.match?(hostname)
     end
 
     # validates the hostname and raises an error

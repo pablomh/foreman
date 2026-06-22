@@ -3,11 +3,17 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import AreaChart from './';
 import {
-  getXAxisTickValues,
   formatAxisTick,
   formatYAxisTick,
-} from './AreaChartLegend';
+  getXAxisTickValues,
+} from '../helpers/LegendHelpers';
 import { areaChartData, areaChartDataDenseSameMinute } from './AreaChart.fixtures';
+
+// Mock EmptyState to avoid Redux/CSS import issues in Jest
+jest.mock('../../EmptyState', () => ({
+  __esModule: true,
+  default: ({ header }) => <div data-testid="empty-state">{header}</div>,
+}));
 
 jest.unmock('./');
 
@@ -130,8 +136,8 @@ describe('AreaChart', () => {
   it('clicking legend symbol toggles series visibility', () => {
     const { container } = render(<AreaChart data={areaChartData.data} />);
 
-    const symbols = container.querySelectorAll('.area-chart-legend-symbol');
-    const labels = container.querySelectorAll('.area-chart-legend-label');
+    const symbols = container.querySelectorAll('.chart-legend-symbol');
+    const labels = container.querySelectorAll('.chart-legend-label');
 
     expect(symbols.length).toBeGreaterThanOrEqual(1);
     expect(labels.length).toBeGreaterThanOrEqual(1);

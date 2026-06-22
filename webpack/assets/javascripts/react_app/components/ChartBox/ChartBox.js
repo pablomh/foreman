@@ -5,16 +5,54 @@ import {
   CardBody,
   CardTitle,
   CardHeader,
+  Flex,
+  FlexItem,
   Modal,
   ModalVariant,
+  Spinner,
+  Icon,
 } from '@patternfly/react-core';
+import { ErrorCircleOIcon } from '@patternfly/react-icons';
 import classNames from 'classnames';
 import DonutChart from '../common/charts/DonutChart';
 import BarChart from '../common/charts/BarChart';
-import Loader from '../common/Loader';
 import MessageBox from '../common/MessageBox';
+import { STATUS } from '../../constants';
+import EmptyState from '../common/EmptyState';
 import { translate as __ } from '../../common/I18n';
 import './ChartBox.css';
+
+const ChartBoxContent = ({ status, panelChart, error }) => {
+  if (status === STATUS.PENDING) {
+    return (
+      <Flex
+        className="chart-box-loader"
+        alignItems={{ default: 'alignItemsCenter' }}
+        justifyContent={{ default: 'justifyContentCenter' }}
+      >
+        <FlexItem>
+          <Spinner size="lg" aria-label="Loading" />
+        </FlexItem>
+      </Flex>
+    );
+  }
+
+  if (status === STATUS.RESOLVED) {
+    return panelChart;
+  }
+
+  if (status === STATUS.ERROR) {
+    return error;
+  }
+
+  return <MessageBox icontype="error-circle-o" msg="Invalid Status" />;
+};
+
+ChartBoxContent.propTypes = {
+  status: PropTypes.string.isRequired,
+  panelChart: PropTypes.node.isRequired,
+  error: PropTypes.node.isRequired,
+};
 
 const ChartBox = ({
   chart,
@@ -70,10 +108,15 @@ const ChartBox = ({
 
   const panelChart = <Chart {...chartPropsForType[type]} config={config} />;
   const error = (
-    <MessageBox
-      msg={errorText}
+    <EmptyState
       key={`${chart.id}-error`}
-      icontype="error-circle-o"
+      variant="xs"
+      icon={
+        <Icon iconSize="lg">
+          <ErrorCircleOIcon />
+        </Icon>
+      }
+      header={errorText}
     />
   );
 
@@ -89,7 +132,11 @@ const ChartBox = ({
         </CardTitle>
       </CardHeader>
       <CardBody>
-        <Loader status={status}>{[panelChart, error]}</Loader>
+        <ChartBoxContent
+          status={status}
+          panelChart={panelChart}
+          error={error}
+        />
         <Modal
           ouiaId={`chart-${chart.id}-modal`}
           className="chart-box-modal"
