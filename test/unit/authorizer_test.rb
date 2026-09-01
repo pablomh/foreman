@@ -194,6 +194,7 @@ class AuthorizerTest < ActiveSupport::TestCase
             auth       = Authorizer.new(@user)
             assert auth.can?(:edit_subnets, subnet, cache)
           end
+
         end
       end
     end
@@ -248,6 +249,143 @@ class AuthorizerTest < ActiveSupport::TestCase
     result  = auth.build_scoped_search_condition(filters)
 
     assert_equal "(((organization_id ^ (#{user.organization_ids.first})) AND (location_id ^ (#{user.location_ids.first}))))", result
+  end
+
+  test "#build_scoped_search_condition groups filters with identical taxonomy_search" do
+    user = FactoryBot.create(:user)
+    auth = Authorizer.new(user)
+    taxonomy_search = 'organization_id ^ (10,11,12)'
+    filters = [
+      FactoryBot.build_stubbed(:filter, :on_name_all, :taxonomy_search => taxonomy_search),
+      FactoryBot.build_stubbed(:filter, :on_name_starting_with_a, :taxonomy_search => taxonomy_search),
+    ]
+
+    result = auth.build_scoped_search_condition(filters)
+
+    expected_base = QueryBuilder.join('AND', [
+      QueryBuilder.join('OR', ['name ~ *', 'name ~ a*']),
+      taxonomy_search,
+    ])
+    expected = QueryBuilder.join('AND', [
+      expected_base,
+      QueryBuilder.join('AND', filters.first.taxonomy_search_condition_for_user(user)),
+    ])
+
+    assert_equal expected, result
+  end
+
+  test "#build_scoped_search_condition collapses redundant grouped filters without search" do
+    user = FactoryBot.create(:user)
+    auth = Authorizer.new(user)
+    taxonomy_search = 'organization_id ^ (10,11,12)'
+    filters = [
+      FactoryBot.build_stubbed(:filter, :search => nil, :taxonomy_search => taxonomy_search),
+      FactoryBot.build_stubbed(:filter, :on_name_all, :taxonomy_search => taxonomy_search),
+    ]
+
+    result = auth.build_scoped_search_condition(filters)
+
+    expected = QueryBuilder.join('AND', [
+      taxonomy_search,
+      QueryBuilder.join('AND', filters.first.taxonomy_search_condition_for_user(user)),
+    ])
+
+    assert_equal expected, result
+  end
+
+  test "#build_scoped_search_condition groups filters with equivalent taxonomy scopes in different id order" do
+    user = FactoryBot.create(:user)
+    auth = Authorizer.new(user)
+    filter_one = FactoryBot.build_stubbed(:filter, :on_name_all, :taxonomy_search => 'organization_id ^ (3,1,2)')
+    filter_two = FactoryBot.build_stubbed(:filter, :on_name_starting_with_a, :taxonomy_search => 'organization_id ^ (1,2,3)')
+
+    filter_one.stubs(:taxonomy_search_condition_for_user).with(user, filter_one.taxonomy_search).returns(['organization_id ^ (3,1,2)'])
+    filter_two.stubs(:taxonomy_search_condition_for_user).with(user, filter_two.taxonomy_search).returns(['organization_id ^ (1,2,3)'])
+    filter_one.stubs(:taxonomy_search_condition_for_user).with(user).returns(['organization_id ^ (1,2,3)'])
+
+    result = auth.build_scoped_search_condition([filter_one, filter_two])
+
+    expected_base = QueryBuilder.join('AND', [
+      QueryBuilder.join('OR', ['name ~ *', 'name ~ a*']),
+      filter_one.taxonomy_search,
+    ])
+    expected = QueryBuilder.join('AND', [
+      expected_base,
+      QueryBuilder.join('AND', ['organization_id ^ (1,2,3)']),
+    ])
+
+    assert_equal expected, result
+  end
+
+  test "#build_scoped_search_condition uses resource class granularity without checking every filter" do
+    user = FactoryBot.create(:user)
+    auth = Authorizer.new(user)
+    filter_one = FactoryBot.build_stubbed(:filter, :on_name_all, :taxonomy_search => 'organization_id ^ (1,2,3)')
+    filter_two = FactoryBot.build_stubbed(:filter, :on_name_starting_with_a, :taxonomy_search => 'organization_id ^ (1,2,3)')
+
+    filter_two.expects(:granular?).never
+
+    result = auth.build_scoped_search_condition([filter_one, filter_two], Host::Managed)
+
+    expected_base = QueryBuilder.join('AND', [
+      QueryBuilder.join('OR', ['name ~ *', 'name ~ a*']),
+      filter_one.taxonomy_search,
+    ])
+    expected = QueryBuilder.join('AND', [
+      expected_base,
+      QueryBuilder.join('AND', filter_one.taxonomy_search_condition_for_user(user)),
+    ])
+
+    assert_equal expected, result
+  end
+
+  test "#authorization_search_metrics reports grouped filter count for equivalent taxonomy scopes" do
+    user = FactoryBot.create(:user)
+    auth = Authorizer.new(user)
+    filter_one = FactoryBot.build_stubbed(:filter, :on_name_all, :taxonomy_search => 'organization_id ^ (3,1,2)')
+    filter_two = FactoryBot.build_stubbed(:filter, :on_name_starting_with_a, :taxonomy_search => 'organization_id ^ (1,2,3)')
+
+    filter_one.stubs(:taxonomy_search_condition_for_user).with(user, filter_one.taxonomy_search).returns(['organization_id ^ (3,1,2)'])
+    filter_two.stubs(:taxonomy_search_condition_for_user).with(user, filter_two.taxonomy_search).returns(['organization_id ^ (1,2,3)'])
+
+    metrics = auth.send(:authorization_search_metrics, [filter_one, filter_two], 'name ~ test', Host::Managed)
+
+    assert_equal 2, metrics[:filter_count]
+    assert_equal 1, metrics[:grouped_filter_count]
+    assert_equal 11, metrics[:search_length]
+  end
+
+  test "#build_filtered_scope_components denies access when authorization search exceeds max length" do
+    auth = Authorizer.new(@user)
+    logger = mock
+
+    auth.expects(:build_scoped_search_condition).with([:filter]).returns('x' * (Authorizer::MAX_AUTHORIZATION_SEARCH_LENGTH + 1))
+    ScopedSearch::QueryBuilder.expects(:build_query).never
+    Foreman::Logging.expects(:logger).with('permissions').returns(logger)
+    logger.expects(:warn).with(regexp_matches(/Authorization search expression too large/))
+
+    result = auth.build_filtered_scope_components(Host, [:filter], {})
+
+    assert_includes result[:where], '1=0'
+    assert_empty result[:includes]
+    assert_empty result[:joins]
+  end
+
+  test "#build_filtered_scope_components denies access on scoped search stack overflow" do
+    auth = Authorizer.new(@user)
+    logger = mock
+    search_string = 'name ~ test'
+
+    auth.expects(:build_scoped_search_condition).with([:filter]).returns(search_string)
+    ScopedSearch::QueryBuilder.expects(:build_query).raises(SystemStackError)
+    Foreman::Logging.expects(:logger).with('permissions').returns(logger)
+    logger.expects(:error).with(regexp_matches(/caused stack overflow/))
+
+    result = auth.build_filtered_scope_components(Host, [:filter], {})
+
+    assert_includes result[:where], '1=0'
+    assert_empty result[:includes]
+    assert_empty result[:joins]
   end
 
   test "#find_collection(Host, :permission => :view_hosts) with scoped_search join returns r/w resources" do
