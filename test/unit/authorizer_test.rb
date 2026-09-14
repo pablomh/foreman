@@ -103,7 +103,7 @@ class AuthorizerTest < ActiveSupport::TestCase
             domain1     = FactoryBot.create(:domain)
             domain2     = FactoryBot.create(:domain, :name => 'a-domain.to-be-found.com')
             domain3     = FactoryBot.create(:domain, :name => 'another-domain.to-be-found.com')
-            domain4     = FactoryBot.create(:domain, :name => 'be_editable.to-be-found.com')
+            domain4     = FactoryBot.create(:domain, :name => 'be-editable.to-be-found.com')
             auth        = Authorizer.new(@user)
 
             collection = auth.find_collection(Domain, :permission => :view_domains)
@@ -326,6 +326,20 @@ class AuthorizerTest < ActiveSupport::TestCase
 
     Filter.new(role: @role, permissions: [permission], search: 'invalid_field = raise-an-error').save(validate: false)
     assert_empty auth.find_collection(Host::Managed, permission: :view_hosts)
+  end
+
+  test "#find_collection preloads filterings and permissions" do
+    permission = Permission.find_by_name('view_domains')
+    FactoryBot.create_list(:role, 2).each do |role|
+      FactoryBot.create(:user_user_role, :owner => @user, :role => role)
+      FactoryBot.create(:filter, :role => role, :permissions => [permission])
+    end
+    @user.reload
+    auth = Authorizer.new(@user)
+
+    assert_sql_queries(2, /SELECT .* FROM "(?:filterings|permissions)"/) do
+      auth.find_collection(Domain, :permission => :view_domains)
+    end
   end
 
   describe '#find_collection' do

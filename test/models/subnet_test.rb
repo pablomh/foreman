@@ -163,4 +163,56 @@ class SubnetTest < ActiveSupport::TestCase
     results = Subnet.search_for(%{params.#{parameter.name} ~ "192"})
     assert results.include?(subnet)
   end
+
+  test 'should reject network address that contains cidr suffix' do
+    subnet = FactoryBot.build(:subnet_ipv4,
+      :network => '192.168.24.0/24',
+      :mask => '255.255.255.0'
+    )
+    refute subnet.valid?
+    assert_includes subnet.errors[:network], 'must not include a CIDR prefix'
+  end
+
+  test 'should reject network address with cidr suffix even when mask is invalid' do
+    subnet = FactoryBot.build(:subnet_ipv4,
+      :network => '192.168.24.0/24',
+      :mask => 'not-a-mask'
+    )
+    refute subnet.valid?
+    assert_includes subnet.errors[:network], 'must not include a CIDR prefix'
+  end
+
+  test 'should accept network address without cidr suffix' do
+    subnet = FactoryBot.build(:subnet_ipv4,
+      :network => '192.168.24.0',
+      :mask => '255.255.255.0'
+    )
+    assert subnet.valid?
+  end
+
+  test 'should reject ipv6 network address that contains cidr suffix' do
+    subnet = FactoryBot.build(:subnet_ipv6,
+      :network => '2001:db8::/64',
+      :mask => 'ffff:ffff:ffff:ffff::'
+    )
+    refute subnet.valid?
+    assert_includes subnet.errors[:network], 'must not include a CIDR prefix'
+  end
+
+  test 'should reject ipv6 network address with cidr suffix even when mask is invalid' do
+    subnet = FactoryBot.build(:subnet_ipv6,
+      :network => '2001:db8::/64',
+      :mask => 'not-a-mask'
+    )
+    refute subnet.valid?
+    assert_includes subnet.errors[:network], 'must not include a CIDR prefix'
+  end
+
+  test 'should accept ipv6 network address without cidr suffix' do
+    subnet = FactoryBot.build(:subnet_ipv6,
+      :network => '2001:db8::',
+      :mask => 'ffff:ffff:ffff:ffff::'
+    )
+    assert subnet.valid?
+  end
 end

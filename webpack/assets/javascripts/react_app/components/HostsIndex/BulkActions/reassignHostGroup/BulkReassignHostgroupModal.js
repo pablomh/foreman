@@ -11,7 +11,7 @@ import {
 } from '@patternfly/react-core';
 import { addToast } from '../../../ToastsList/slice';
 import { translate as __ } from '../../../../common/I18n';
-import { failedHostsToastParams } from '../helpers';
+import { buildBulkRequestBody, bulkErrorToastParams } from '../helpers';
 import { STATUS } from '../../../../constants';
 import {
   selectAPIStatus,
@@ -23,14 +23,8 @@ import {
   fetchHostgroups,
   HOSTGROUP_KEY,
 } from './actions';
-import { foremanUrl } from '../../../../common/helpers';
-import { APIActions } from '../../../../redux/API';
 import HostGroupSelect from './HostGroupSelect';
 import SkeletonLoader from '../../../common/SkeletonLoader';
-import {
-  HOSTS_API_PATH,
-  API_REQUEST_KEY,
-} from '../../../../routes/Hosts/constants';
 import './BulkReassignHostgroupModal.scss';
 
 // Helper function to format hostgroup title for display
@@ -77,6 +71,9 @@ const BulkReassignHostgroupModal = ({
   closeModal,
   selectedCount,
   fetchBulkParams,
+  organizationId,
+  locationId,
+  onSuccess: onSuccessCallback,
 }) => {
   const dispatch = useDispatch();
   const [hostgroupId, setHostgroupId] = useState('');
@@ -123,15 +120,10 @@ const BulkReassignHostgroupModal = ({
     dispatch(fetchHostgroups());
   }, [dispatch]);
 
-  const handleError = response => {
+  const handleError = error => {
     handleModalClose();
     dispatch(
-      addToast(
-        failedHostsToastParams({
-          ...response.data.error,
-          key: BULK_REASSIGN_HOSTGROUP_KEY,
-        })
-      )
+      addToast(bulkErrorToastParams(error, BULK_REASSIGN_HOSTGROUP_KEY))
     );
   };
 
@@ -142,21 +134,16 @@ const BulkReassignHostgroupModal = ({
         message: response.data.message,
       })
     );
-    dispatch(
-      APIActions.get({
-        key: API_REQUEST_KEY,
-        url: foremanUrl(HOSTS_API_PATH),
-      })
-    );
+    if (onSuccessCallback) onSuccessCallback();
     handleModalClose();
   };
   const handleSave = () => {
-    const requestBody = {
-      included: {
-        search: fetchBulkParams(),
-      },
+    const requestBody = buildBulkRequestBody({
+      fetchBulkParams,
+      organizationId,
+      locationId,
       hostgroup_id: hostgroupId,
-    };
+    });
 
     dispatch(bulkReassignHostgroups(requestBody, handleSuccess, handleError));
   };
@@ -285,11 +272,17 @@ BulkReassignHostgroupModal.propTypes = {
   closeModal: PropTypes.func,
   selectedCount: PropTypes.number.isRequired,
   fetchBulkParams: PropTypes.func.isRequired,
+  organizationId: PropTypes.number,
+  locationId: PropTypes.number,
+  onSuccess: PropTypes.func,
 };
 
 BulkReassignHostgroupModal.defaultProps = {
   isOpen: false,
   closeModal: () => {},
+  organizationId: undefined,
+  locationId: undefined,
+  onSuccess: undefined,
 };
 
 export default BulkReassignHostgroupModal;

@@ -101,8 +101,8 @@ FactoryBot.define do
 
     factory :ubuntu14_10, class: Debian do
       sequence(:name) { 'Ubuntu' }
-      major { '14' }
-      minor { '10' }
+      major { '14.10' }
+      minor { '' }
       type { 'Debian' }
       release_name { 'utopic' }
       title { 'Ubuntu Utopic' }
@@ -144,12 +144,29 @@ FactoryBot.define do
       title { 'Debian Wheezy' }
     end
 
+    factory :debian13_0, class: Debian do
+      sequence(:name) { 'Debian' }
+      major { '13' }
+      minor { '0' }
+      type { 'Debian' }
+      release_name { 'trixie' }
+      title { 'Debian Trixie' }
+    end
+
     factory :suse, class: Suse do
       sequence(:name) { 'OpenSuse' }
       major { '11' }
       minor { '4' }
       type { 'Suse' }
       title { 'OpenSuse 11.4' }
+    end
+
+    factory :opensuse_16_0, class: Suse do
+      sequence(:name) { 'OpenSuse' }
+      major { '16' }
+      minor { '0' }
+      type { 'Suse' }
+      title { 'openSUSE Leap 16.0' }
     end
 
     factory :rhel7_5, class: Redhat do
@@ -284,6 +301,17 @@ FactoryBot.define do
       architectures { [FactoryBot.build(:architecture, :for_snapshots_x86_64)] }
       media { [FactoryBot.build(:rhel_for_snapshots)] }
       ptables { [FactoryBot.build(:ptable, name: 'ptable')] }
+    end
+
+    factory :for_snapshots_freebsd, class: Freebsd do
+      name { 'FreeBSD' }
+      major { '11' }
+      minor { '2' }
+      type { 'Freebsd' }
+      title { 'FreeBSD 11.2' }
+      architectures { [FactoryBot.build(:architecture, :for_snapshots_x86_64)] }
+      media { [FactoryBot.build(:medium, :freebsd)] }
+      ptables { [FactoryBot.build(:ptable, :freebsd, name: 'ptable')] }
     end
 
     factory :for_snapshots_windows10, class: Windows do

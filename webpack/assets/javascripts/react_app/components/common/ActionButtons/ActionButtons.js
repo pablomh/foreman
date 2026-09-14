@@ -37,11 +37,13 @@ export const ActionButtons = ({ buttons }) => {
   return (
     <Dropdown
       ouiaId="action-buttons-dropdown"
+      className="action-buttons-dropdown"
       isOpen={isOpen}
       onOpenChange={nextOpen => setIsOpen(nextOpen)}
       toggle={toggleRef => (
         <MenuToggle
           ref={toggleRef}
+          ouiaId="action-buttons-toggle"
           variant="secondary"
           aria-label="Menu toggle with action split button"
           isExpanded={isOpen}

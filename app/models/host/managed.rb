@@ -317,7 +317,8 @@ class Host::Managed < Host::Base
 
   validates :architecture_id, :presence => true, :if => proc { |host| host.managed }
   validates :root_pass, :length => {:minimum => 8, :message => N_('should be 8 characters or more')},
-                        :presence => {:message => N_('should not be blank - consider setting a global or host group default')},
+                        :if => proc { |host| host.managed && !host.image_build? && host.root_pass.present? }
+  validates :root_pass, :presence => {:message => N_('should not be blank - consider setting a global or host group default')},
                         :if => proc { |host| host.managed && !host.image_build? && build? }
   validates :ptable_id, :presence => {:message => N_("can't be blank unless a custom partition has been defined")},
                         :if => proc { |host| host.managed && host.disk.empty? && !Foreman.in_rake? && !host.image_build? && host.build? }
@@ -817,7 +818,7 @@ autopart"', desc: 'to render the content of host partition table'
   end
 
   def global_status_fulltext
-    host_statuses.select { |s| s.relevant? && !s.substatus? }.sort_by(&:type).map { |s| "#{_(s.name)}: #{_(s.to_label)}" }
+    host_statuses.select { |s| s.persisted? && s.relevant? && !s.substatus? }.sort_by(&:type).map { |s| "#{_(s.name)}: #{_(s.to_label)}" }
   end
 
   def configuration_status(options = {})

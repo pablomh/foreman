@@ -12,6 +12,7 @@ import {
   TreeView,
 } from '@patternfly/react-core';
 import { addToast } from '../../../ToastsList/slice';
+import { buildBulkRequestBody, bulkErrorToastParams } from '../helpers';
 import { translate as __ } from '../../../../common/I18n';
 import { STATUS } from '../../../../constants';
 import {
@@ -31,12 +32,6 @@ import {
   LOCATION_KEY,
   MODAL_TYPES,
 } from './BulkAssignTaxonomyConstants';
-import { foremanUrl } from '../../../../common/helpers';
-import { APIActions } from '../../../../redux/API';
-import {
-  HOSTS_API_PATH,
-  API_REQUEST_KEY,
-} from '../../../../routes/Hosts/constants';
 import TaxonomySelect from './TaxonomySelect';
 
 export const BulkAssignOrganizationModal = props => (
@@ -52,9 +47,15 @@ const BulkAssignTaxonomyModal = ({
   selectAllHostsMode,
   selectedCount,
   fetchBulkParams,
+  organizationId,
+  locationId,
   modalType,
+  onSuccess: onSuccessCallback,
 }) => {
   const org = modalType === MODAL_TYPES.ORGANIZATION;
+  const actionKey = org
+    ? BULK_ASSIGN_ORGANIZATION_KEY
+    : BULK_ASSIGN_LOCATION_KEY;
   const taxType = org ? 'organization' : 'location';
   const dispatch = useDispatch();
   const [taxId, setTaxId] = useState('');
@@ -71,9 +72,7 @@ const BulkAssignTaxonomyModal = ({
       : selectAPIStatus(state, LOCATION_KEY)
   );
   const hostUpdateStatus = useSelector(state =>
-    org
-      ? selectAPIStatus(state, BULK_ASSIGN_ORGANIZATION_KEY)
-      : selectAPIStatus(state, BULK_ASSIGN_LOCATION_KEY)
+    selectAPIStatus(state, actionKey)
   );
   const handleModalClose = () => {
     setTaxId('');
@@ -91,6 +90,7 @@ const BulkAssignTaxonomyModal = ({
   const toggle = toggleRef => (
     <MenuToggle
       ref={toggleRef}
+      ouiaId="bulk-assign-taxonomy-toggle"
       onClick={onToggleClick}
       isExpanded={selectOpen}
       style={{ width: '95%' }}
@@ -108,15 +108,8 @@ const BulkAssignTaxonomyModal = ({
     taxonomy.results.find(t => t.id === id)?.name;
 
   const handleError = error => {
-    const {
-      response: {
-        data: {
-          error: { message },
-        },
-      },
-    } = error;
-    dispatch(addToast({ type: 'danger', message }));
     handleModalClose();
+    dispatch(addToast(bulkErrorToastParams(error, actionKey)));
   };
 
   const handleSuccess = response => {
@@ -126,23 +119,18 @@ const BulkAssignTaxonomyModal = ({
         message: response.data.message,
       })
     );
-    dispatch(
-      APIActions.get({
-        key: API_REQUEST_KEY,
-        url: foremanUrl(HOSTS_API_PATH),
-      })
-    );
+    if (onSuccessCallback) onSuccessCallback();
     handleModalClose();
   };
 
   const handleSave = () => {
-    const requestBody = {
-      included: {
-        search: fetchBulkParams(),
-      },
+    const requestBody = buildBulkRequestBody({
+      fetchBulkParams,
+      organizationId,
+      locationId,
       id: taxId,
       mismatch_setting: fixRadioChecked,
-    };
+    });
 
     org
       ? dispatch(
@@ -243,10 +231,16 @@ BulkAssignTaxonomyModal.propTypes = {
   selectedCount: PropTypes.number.isRequired,
   selectAllHostsMode: PropTypes.bool.isRequired,
   fetchBulkParams: PropTypes.func.isRequired,
+  organizationId: PropTypes.number,
+  locationId: PropTypes.number,
   modalType: PropTypes.string.isRequired,
+  onSuccess: PropTypes.func,
 };
 
 BulkAssignTaxonomyModal.defaultProps = {
   isOpen: false,
   closeModal: () => {},
+  organizationId: undefined,
+  locationId: undefined,
+  onSuccess: undefined,
 };

@@ -157,6 +157,29 @@ class Api::V2::HostsControllerTest < ActionController::TestCase
       "API should not return stale database column value"
   end
 
+  test "total counts reflect dynamically computed status, not stale DB column" do
+    # Create a host in build mode with a token that will expire
+    host = FactoryBot.create(:host, :managed, :build => true)
+    Setting[:token_duration] = 60 # 60 minutes
+
+    # Create the build status record — at this point, token is fresh → PENDING
+    status = host.get_status(HostStatus::BuildStatus)
+    status.refresh!
+    assert_equal HostStatus::BuildStatus::PENDING, status.reload.status
+
+    # Expire the token by moving time forward
+    host.token.update!(expires: 1.hour.ago)
+
+    # DB column still says PENDING, but computed status should be TOKEN_EXPIRED
+    presenter = HostStatusPresenter.new(HostStatus::BuildStatus)
+    totals = presenter.total
+
+    assert_equal 0, totals.fetch(HostStatus::BuildStatus::PENDING, 0),
+      "Stale PENDING count should be 0"
+    assert_equal 1, totals.fetch(HostStatus::BuildStatus::TOKEN_EXPIRED, 0),
+      "TOKEN_EXPIRED count should reflect current state"
+  end
+
   test "index should show ok status for hosts with recent reports" do
     # Create report within outofsync_interval
     @host.reports.create!(
@@ -726,7 +749,7 @@ class Api::V2::HostsControllerTest < ActionController::TestCase
       test 'created domain gets host taxonomies' do
         Setting[:default_location] = loc.title
         Setting[:default_organization] = org.title
-        domain_name = 'my_new_domain.com'
+        domain_name = 'my-new-domain.com'
         facts['domain'] = domain_name
         post :facts, params: { :name => hostname, :facts => facts }
         assert_response :success
@@ -894,6 +917,8 @@ class Api::V2::HostsControllerTest < ActionController::TestCase
       setup do
         setup_user 'view', 'hosts'
         setup_user 'ipmi_boot', 'hosts'
+        setup_user 'view', 'locations'
+        setup_user 'view', 'organizations'
       end
 
       test 'returns error for non-admin user if BMC is not available' do
@@ -909,6 +934,23 @@ class Api::V2::HostsControllerTest < ActionController::TestCase
           returns({ "action" => "bios", "result" => true } .to_json)
         put :boot, params: { :id => @bmchost.to_param, :device => 'bios' },
           session: set_session_user.merge(:user => @one.id)
+        assert_response :success
+      end
+
+      test 'responds correctly for non-admin user with taxonomy context if BMC is available' do
+        ProxyAPI::BMC.any_instance.stubs(:boot).
+          with({ :function => 'bootdevice', :device => 'bios' }).
+          returns({ "action" => "bios", "result" => true } .to_json)
+
+        @bmchost.update!(:organization => taxonomies(:organization1), :location => taxonomies(:location1))
+
+        put :boot, params: {
+          :id => @bmchost.to_param,
+          :device => 'bios',
+          :organization_id => taxonomies(:organization1).id,
+          :location_id => taxonomies(:location1).id,
+        }, session: set_session_user.merge(:user => @one.id)
+
         assert_response :success
       end
     end

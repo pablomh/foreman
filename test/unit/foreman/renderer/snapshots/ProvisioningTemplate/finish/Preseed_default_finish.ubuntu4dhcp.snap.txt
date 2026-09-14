@@ -23,6 +23,7 @@ if [ -z "$PKG_MANAGER" ]; then
     PKG_MANAGER_INSTALL="${PKG_MANAGER} install -y"
     PKG_MANAGER_REMOVE="${PKG_MANAGER} delete -y"
     PKG_MANAGER_UPGRADE="${PKG_MANAGER} install -y"
+    PKG_MANAGER_UPGRADE_ALL_PACKAGES="${PKG_MANAGER} upgrade -y"
   elif [ -f /etc/fedora-release -o -f /etc/redhat-release -o -f /etc/amazon-linux-release -o -f /etc/system-release ]; then
     PKG_MANAGER='dnf'
     if [ -f /etc/redhat-release -a "${VERSION_ID%.*}" -le 7 ]; then
@@ -33,21 +34,29 @@ if [ -z "$PKG_MANAGER" ]; then
     PKG_MANAGER_INSTALL="${PKG_MANAGER} install -y"
     PKG_MANAGER_REMOVE="${PKG_MANAGER} remove -y"
     PKG_MANAGER_UPGRADE="${PKG_MANAGER} upgrade -y"
+    if [ "$PKG_MANAGER" = 'dnf' ]; then
+      PKG_MANAGER_UPGRADE_ALL_PACKAGES="${PKG_MANAGER} upgrade -y"
+    else
+      PKG_MANAGER_UPGRADE_ALL_PACKAGES="${PKG_MANAGER} update -y"
+    fi
   elif [ -f /etc/debian_version ]; then
     PKG_MANAGER='apt-get'
     PKG_MANAGER_INSTALL="${PKG_MANAGER} -o 'Dpkg::Options::=--force-confdef' -o 'Dpkg::Options::=--force-confold' install -y"
     PKG_MANAGER_REMOVE="${PKG_MANAGER} -o 'Dpkg::Options::=--force-confdef' -o 'Dpkg::Options::=--force-confold' remove -y"
-    PKG_MANAGER_UPGRADE="${PKG_MANAGER} -o 'Dpkg::Options::=--force-confdef' -o 'Dpkg::Options::=--force-confold' -o APT::Get::Upgrade-Allow-New='true' upgrade -y"
+    PKG_MANAGER_UPGRADE="${PKG_MANAGER} -o 'Dpkg::Options::=--force-confdef' -o 'Dpkg::Options::=--force-confold' --only-upgrade install -y"
+    PKG_MANAGER_UPGRADE_ALL_PACKAGES="${PKG_MANAGER} -o 'Dpkg::Options::=--force-confdef' -o 'Dpkg::Options::=--force-confold' -o APT::Get::Upgrade-Allow-New='true' upgrade -y"
   elif [ -f /etc/arch-release ]; then
     PKG_MANAGER='pacman'
     PKG_MANAGER_INSTALL="${PKG_MANAGER} --noconfirm -S"
     PKG_MANAGER_REMOVE="${PKG_MANAGER} --noconfirm -R"
     PKG_MANAGER_UPGRADE="${PKG_MANAGER} --noconfirm -S"
+    PKG_MANAGER_UPGRADE_ALL_PACKAGES="${PKG_MANAGER} --noconfirm -Syu"
   elif [ x$ID = xopensuse-tumbleweed -o x$ID = xsles ]; then
     PKG_MANAGER='zypper'
     PKG_MANAGER_INSTALL="${PKG_MANAGER} --non-interactive install --auto-agree-with-licenses"
     PKG_MANAGER_REMOVE="${PKG_MANAGER} --non-interactive remove"
     PKG_MANAGER_UPGRADE="${PKG_MANAGER} --non-interactive update"
+    PKG_MANAGER_UPGRADE_ALL_PACKAGES="${PKG_MANAGER} --non-interactive update"
   fi
 fi
 
@@ -112,7 +121,15 @@ After=network-online.target
 
 [Service]
 Type=oneshot
-ExecStart=/usr/bin/curl -k -s --data "host_config_key=" https://host.example.com/api/controller/v2/job_templates/20/callback/
+TimeoutStartSec=360s
+# Wait until the Ansible Tower / AWX host name can be resolved before running curl.
+# Right after boot, DNS may not be usable yet (e.g. the network path is still
+# converging), which would make curl fail immediately with exit 6. curl's own retry
+# is not relied on for this: whether it retries exit 6 varies by version (curl 7.29
+# on EL7 does not, and --retry-all-errors is not available there), so we wait here
+# to handle it consistently across curl versions.
+ExecStartPre=-/usr/bin/timeout 60 /bin/sh -c 'until getent hosts host.example.com; do sleep 2; done'
+ExecStart=/usr/bin/curl -k -sS -f --connect-timeout 10 --max-time 30 --retry 7 --retry-delay 5 --data "host_config_key=" https://host.example.com/api/controller/v2/job_templates/20/callback/
 ExecStartPost=/usr/bin/systemctl disable ansible-callback
 
 [Install]

@@ -107,6 +107,101 @@ class HostTemplateTest < ActiveSupport::TestCase
     end
   end
 
+  describe '#validate_port' do
+    test 'accepts valid port number' do
+      assert_equal 8443, @scope.send(:validate_port, 8443)
+    end
+
+    test 'accepts valid port at lower boundary' do
+      assert_equal 1, @scope.send(:validate_port, 1)
+    end
+
+    test 'accepts valid port at upper boundary' do
+      assert_equal 65535, @scope.send(:validate_port, 65535)
+    end
+
+    test 'accepts string representation of port' do
+      assert_equal 8140, @scope.send(:validate_port, '8140')
+    end
+
+    test 'accepts string with leading zeros' do
+      assert_equal 8140, @scope.send(:validate_port, '08140')
+    end
+
+    test 'returns nil for nil input' do
+      assert_nil @scope.send(:validate_port, nil)
+    end
+
+    test 'returns nil for empty string' do
+      assert_nil @scope.send(:validate_port, '')
+    end
+
+    test 'rejects port 0' do
+      assert_raises(ArgumentError) { @scope.send(:validate_port, 0) }
+    end
+
+    test 'rejects port out of range (700000)' do
+      assert_raises(ArgumentError) { @scope.send(:validate_port, 700000) }
+    end
+
+    test 'rejects negative port' do
+      assert_raises(ArgumentError) { @scope.send(:validate_port, -1) }
+    end
+
+    test 'rejects negative port string' do
+      assert_raises(ArgumentError) { @scope.send(:validate_port, '-1') }
+    end
+
+    test 'rejects float with decimal' do
+      assert_raises(ArgumentError) { @scope.send(:validate_port, 8443.5) }
+    end
+
+    test 'rejects string with decimal notation' do
+      assert_raises(ArgumentError) { @scope.send(:validate_port, '8443.5') }
+    end
+
+    test 'rejects non-numeric string' do
+      assert_raises(ArgumentError) { @scope.send(:validate_port, 'invalid') }
+    end
+
+    test 'uses custom description for error messages' do
+      assert_raises(ArgumentError) { @scope.send(:validate_port, 0, 'Puppet Server') }
+      assert_raises(ArgumentError) { @scope.send(:validate_port, 0, 'Puppet CA Server') }
+    end
+  end
+
+  describe '#host_puppet_server_port' do
+    test 'returns integer from proxy port' do
+      host = stub(puppet_server_port: 8443)
+      @scope.instance_variable_set('@host', host)
+      result = @scope.host_puppet_server_port
+      assert_instance_of Integer, result
+    end
+
+    test 'validates port by calling validate_port' do
+      host = stub(puppet_server_port: 8443)
+      @scope.instance_variable_set('@host', host)
+      @scope.expects(:validate_port).with(8443, 'Puppet Server')
+      @scope.host_puppet_server_port
+    end
+
+    test 'returns port from host_param when proxy port is empty string' do
+      host = stub(puppet_server_port: '')
+      @scope.instance_variable_set('@host', host)
+      @scope.expects(:host_param).with('puppet_server_port').returns('8443')
+      result = @scope.host_puppet_server_port
+      assert_instance_of Integer, result
+      assert_equal 8443, result
+    end
+
+    test 'returns nil when proxy port and host_param are empty strings' do
+      host = stub(puppet_server_port: '')
+      @scope.instance_variable_set('@host', host)
+      @scope.expects(:host_param).with('puppet_server_port').returns('')
+      assert_nil @scope.host_puppet_server_port
+    end
+  end
+
   describe '#host_puppet_ca_server' do
     test 'should render puppet_ca_server' do
       host = stub(puppet_ca_server: 'myserver.example.com')
@@ -119,6 +214,38 @@ class HostTemplateTest < ActiveSupport::TestCase
       @scope.instance_variable_set('@host', host)
       @scope.expects(:host_param).with('puppet_ca_server').returns('from_param.example.com')
       assert_equal @scope.host_puppet_ca_server, 'from_param.example.com'
+    end
+  end
+
+  describe '#host_puppet_ca_server_port' do
+    test 'returns integer from proxy port' do
+      host = stub(puppet_ca_server_port: 8443)
+      @scope.instance_variable_set('@host', host)
+      result = @scope.host_puppet_ca_server_port
+      assert_instance_of Integer, result
+    end
+
+    test 'validates port by calling validate_port' do
+      host = stub(puppet_ca_server_port: 8443)
+      @scope.instance_variable_set('@host', host)
+      @scope.expects(:validate_port).with(8443, 'Puppet CA Server')
+      @scope.host_puppet_ca_server_port
+    end
+
+    test 'returns port from host_param when proxy port is empty string' do
+      host = stub(puppet_ca_server_port: '')
+      @scope.instance_variable_set('@host', host)
+      @scope.expects(:host_param).with('puppet_ca_server_port').returns('8443')
+      result = @scope.host_puppet_ca_server_port
+      assert_instance_of Integer, result
+      assert_equal 8443, result
+    end
+
+    test 'returns nil when proxy port and host_param are empty strings' do
+      host = stub(puppet_ca_server_port: '')
+      @scope.instance_variable_set('@host', host)
+      @scope.expects(:host_param).with('puppet_ca_server_port').returns('')
+      assert_nil @scope.host_puppet_ca_server_port
     end
   end
 

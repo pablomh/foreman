@@ -105,6 +105,7 @@ if [ -z "$PKG_MANAGER" ]; then
     PKG_MANAGER_INSTALL="${PKG_MANAGER} install -y"
     PKG_MANAGER_REMOVE="${PKG_MANAGER} delete -y"
     PKG_MANAGER_UPGRADE="${PKG_MANAGER} install -y"
+    PKG_MANAGER_UPGRADE_ALL_PACKAGES="${PKG_MANAGER} upgrade -y"
   elif [ -f /etc/fedora-release -o -f /etc/redhat-release -o -f /etc/amazon-linux-release -o -f /etc/system-release ]; then
     PKG_MANAGER='dnf'
     if [ -f /etc/redhat-release -a "${VERSION_ID%.*}" -le 7 ]; then
@@ -115,21 +116,29 @@ if [ -z "$PKG_MANAGER" ]; then
     PKG_MANAGER_INSTALL="${PKG_MANAGER} install -y"
     PKG_MANAGER_REMOVE="${PKG_MANAGER} remove -y"
     PKG_MANAGER_UPGRADE="${PKG_MANAGER} upgrade -y"
+    if [ "$PKG_MANAGER" = 'dnf' ]; then
+      PKG_MANAGER_UPGRADE_ALL_PACKAGES="${PKG_MANAGER} upgrade -y"
+    else
+      PKG_MANAGER_UPGRADE_ALL_PACKAGES="${PKG_MANAGER} update -y"
+    fi
   elif [ -f /etc/debian_version ]; then
     PKG_MANAGER='apt-get'
     PKG_MANAGER_INSTALL="${PKG_MANAGER} -o 'Dpkg::Options::=--force-confdef' -o 'Dpkg::Options::=--force-confold' install -y"
     PKG_MANAGER_REMOVE="${PKG_MANAGER} -o 'Dpkg::Options::=--force-confdef' -o 'Dpkg::Options::=--force-confold' remove -y"
-    PKG_MANAGER_UPGRADE="${PKG_MANAGER} -o 'Dpkg::Options::=--force-confdef' -o 'Dpkg::Options::=--force-confold' -o APT::Get::Upgrade-Allow-New='true' upgrade -y"
+    PKG_MANAGER_UPGRADE="${PKG_MANAGER} -o 'Dpkg::Options::=--force-confdef' -o 'Dpkg::Options::=--force-confold' --only-upgrade install -y"
+    PKG_MANAGER_UPGRADE_ALL_PACKAGES="${PKG_MANAGER} -o 'Dpkg::Options::=--force-confdef' -o 'Dpkg::Options::=--force-confold' -o APT::Get::Upgrade-Allow-New='true' upgrade -y"
   elif [ -f /etc/arch-release ]; then
     PKG_MANAGER='pacman'
     PKG_MANAGER_INSTALL="${PKG_MANAGER} --noconfirm -S"
     PKG_MANAGER_REMOVE="${PKG_MANAGER} --noconfirm -R"
     PKG_MANAGER_UPGRADE="${PKG_MANAGER} --noconfirm -S"
+    PKG_MANAGER_UPGRADE_ALL_PACKAGES="${PKG_MANAGER} --noconfirm -Syu"
   elif [ x$ID = xopensuse-tumbleweed -o x$ID = xsles ]; then
     PKG_MANAGER='zypper'
     PKG_MANAGER_INSTALL="${PKG_MANAGER} --non-interactive install --auto-agree-with-licenses"
     PKG_MANAGER_REMOVE="${PKG_MANAGER} --non-interactive remove"
     PKG_MANAGER_UPGRADE="${PKG_MANAGER} --non-interactive update"
+    PKG_MANAGER_UPGRADE_ALL_PACKAGES="${PKG_MANAGER} --non-interactive update"
   fi
 fi
 
@@ -209,53 +218,6 @@ rm /etc/resolv.conf
   </timezone>
   <add-on>
     <add_on_products config:type="list">
-      <listentry>
-        <media_url><![CDATA[http://download.opensuse.org/repositories/systemsmanagement:/puppet/SLE_7/]]></media_url>
-        <name>systemsmanagement_puppet</name>
-        <product>systemsmanagement_puppet</product>
-        <product_dir>/</product_dir>
-        <signature-handling>
-          <accept_non_trusted_gpg_key>
-            <all config:type="boolean">false</all>
-            <keys config:type="list">
-              <keyid>2ABFA143A0E46E11</keyid>
-            </keys>
-          </accept_non_trusted_gpg_key>
-          <import_gpg_key>
-            <all config:type="boolean">false</all>
-            <keys config:type="list">
-              <keyid>2ABFA143A0E46E11</keyid>
-            </keys>
-          </import_gpg_key>
-        </signature-handling>
-      </listentry>
-      <listentry>
-        <media_url><![CDATA[http://download.opensuse.org/repositories/devel:languages:ruby:backports/SLE_7/]]></media_url>
-        <name>devel_languages_ruby_backports</name>
-        <product>devel_languages_ruby_backports</product>
-        <product_dir>/</product_dir>
-        <signature-handling>
-          <accept_non_trusted_gpg_key>
-            <all config:type="boolean">false</all>
-            <keys config:type="list">
-              <keyid>9AF0C9A20E9AF123</keyid>
-            </keys>
-          </accept_non_trusted_gpg_key>
-          <import_gpg_key>
-            <all config:type="boolean">false</all>
-            <keys config:type="list">
-              <keyid>9AF0C9A20E9AF123</keyid>
-            </keys>
-          </import_gpg_key>
-        </signature-handling>
-      </listentry>
-      <listentry>
-<!-- you have to update the next line with the actual URL of your SDK -->
-        <media_url>http://<your_server_here>/iso/suse/SDK/7.0/x86_64/</media_url>
-        <product>SuSE-Linux-SDK</product>
-        <product_dir>/</product_dir>
-        <name>SuSE-Linux-SDK</name>
-      </listentry>
     </add_on_products>
   </add-on>
 </profile>

@@ -54,7 +54,8 @@ module HostCommon
           lookup_value = lookup_values.to_a.find { |i| i.id.to_i == id.to_i }
           if lookup_value
             mark_for_destruction = Foreman::Cast.to_bool(attr.delete(:_destroy))
-            lookup_value.attributes = attr
+            attr.delete(:match)
+            lookup_value.attributes = attr.merge(:host_or_hostgroup => self)
             lookup_value.mark_for_destruction if mark_for_destruction
           end
         elsif !Foreman::Cast.to_bool(attr.delete(:_destroy))
@@ -107,6 +108,11 @@ module HostCommon
   end
   alias_method :puppetmaster, :puppet_server
 
+  # The Puppet server port. Exposed as a provisioning macro.
+  def puppet_server_port
+    puppet_server_uri.try(:port)
+  end
+
   def puppet_ca_server_uri
     return unless puppet_ca_proxy
     url = puppet_ca_proxy.setting('Puppet CA', 'puppet_url')
@@ -118,6 +124,11 @@ module HostCommon
   # macro.
   def puppet_ca_server
     puppet_ca_server_uri.try(:host) || ''
+  end
+
+  # The Puppet CA server port. Exposed as a provisioning macro.
+  def puppet_ca_server_port
+    puppet_ca_server_uri.try(:port)
   end
 
   # If the host/hostgroup has a medium then use the path from there
@@ -143,7 +154,7 @@ module HostCommon
   def image_file=(file)
     # We only save a value into the image_file field if the value is not the default path, (which was placed in the entry when it was displayed,)
     # and it is not a directory, (ends in /)
-    value = ((default_image_file == file) || (file =~ /\/\Z/) || file == "") ? nil : file
+    value = ((default_image_file == file) || file.blank? || file.end_with?('/')) ? nil : file
     self[:image_file] = value
   end
 

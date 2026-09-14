@@ -457,6 +457,10 @@ class User < ApplicationRecord
     admin? || can?(:escalate_roles)
   end
 
+  def can_assign_for_usergroup?(role_ids, usergroup, new_role_ids)
+    can_escalate_excluding_roles?(usergroup, new_role_ids) || role_ids.all? { |r| role_ids_was.include?(r) }
+  end
+
   # only admin can change admin flag
   def can_change_admin_flag?
     admin?
@@ -464,22 +468,22 @@ class User < ApplicationRecord
 
   def editing_self?(options = {})
     options[:controller].to_s == 'users' &&
-      options[:action] =~ /edit|update|invalidate_jwt/ &&
+      /edit|update|invalidate_jwt/.match?(options[:action]) &&
       options[:id].to_i == id ||
-    options[:controller].to_s =~ /\Aapi\/v\d+\/users\Z/ &&
-      options[:action] =~ /show|update/ &&
+    /\Aapi\/v\d+\/users\Z/.match?(options[:controller]) &&
+      /show|update/.match?(options[:action]) &&
       (options[:id].to_i == id || options[:id] == login) ||
     options[:controller].to_s == 'ssh_keys' &&
       options[:user_id].to_i == id &&
-      options[:action] =~ /new|create|destroy/ ||
+      /new|create|destroy/.match?(options[:action]) ||
     options[:controller].to_s == 'api/v2/ssh_keys' &&
-      options[:action] =~ /show|destroy|index|create/ &&
+      /show|destroy|index|create/.match?(options[:action]) &&
       options[:user_id].to_i == id ||
     options[:controller].to_s == 'api/v2/personal_access_tokens' &&
-      options[:action] =~ /show|destroy|index|create/ &&
+      /show|destroy|index|create/.match?(options[:action]) &&
       options[:user_id].to_i == id ||
     options[:controller].to_s == 'api/v2/registration_tokens' &&
-      options[:action] =~ /invalidate_jwt/ &&
+      /invalidate_jwt/.match?(options[:action]) &&
       options[:id].to_i == id
   end
 
@@ -515,10 +519,11 @@ class User < ApplicationRecord
   def taxonomy_and_child_ids(taxonomies)
     delay = Rails.env.test? ? 0 : 2.minutes
     Rails.cache.fetch("user/#{id}/taxonomy_and_child_ids/#{taxonomies}", expires_in: delay) do
-      top_level = send(taxonomies) + taxonomies.to_s.classify.constantize.unscoped.select { |tax| tax.ignore?('user') }
-      top_level.each_with_object([]) do |taxonomy, ids|
-        ids.concat taxonomy.subtree_ids
-      end.uniq
+      klass = taxonomies.to_s.classify.constantize
+      top_level = send(taxonomies) + klass.unscoped.ignoring(User)
+      next [] if top_level.empty?
+
+      Taxonomy.batch_subtree_ids(top_level)
     end
   end
 
@@ -609,6 +614,16 @@ class User < ApplicationRecord
   end
 
   private
+
+  def can_escalate_excluding_roles?(usergroup, role_ids)
+    return true if admin?
+    tainted_user_role_ids = UserRole.where(owner: usergroup, role_id: role_ids).pluck(:id)
+    cached_user_roles
+      .where.not(user_role_id: tainted_user_role_ids)
+      .joins(role: { filters: :permissions })
+      .where(permissions: { name: :escalate_roles })
+      .exists?
+  end
 
   def prepare_password
     if password.present?

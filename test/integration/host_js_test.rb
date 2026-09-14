@@ -1,7 +1,7 @@
 require 'integration_test_helper'
 require 'integration/shared/host_finders'
 require 'integration/shared/host_orchestration_stubs'
-require 'fog/libvirt/models/compute/node'
+require 'fog/libvirt/models/compute/node' if Foreman::Model::Libvirt.available?
 
 class HostJSTest < IntegrationTestWithJavascript
   # intermittent failures:
@@ -18,6 +18,7 @@ class HostJSTest < IntegrationTestWithJavascript
   include HostOrchestrationStubs
 
   before do
+    skip_without_libvirt
     as_admin { @host = FactoryBot.create(:host, :managed) }
     Fog.mock!
     Foreman::Model::Libvirt.any_instance.stubs(:hypervisor).returns(Fog::Libvirt::Compute::Node.new(:cpus => 4))
@@ -123,7 +124,10 @@ class HostJSTest < IntegrationTestWithJavascript
     test "all audit redirect to audit page" do
       visit host_details_page_path(@host)
       find('a', :text => /All audits/).click
-      assert_current_path audits_path(search: "host=#{@host.fqdn}")
+      assert_current_path audits_path, ignore_query: true
+      query = Rack::Utils.parse_query(URI.parse(current_url).query)
+      assert_equal "host=#{@host.fqdn}", query['search']
+      assert_equal '1', query['page']
     end
 
     test "manage host statuses modal" do

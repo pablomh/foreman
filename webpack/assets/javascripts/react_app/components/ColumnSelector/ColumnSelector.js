@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { PropTypes } from 'prop-types';
 import {
   Button,
+  InputGroup,
+  InputGroupItem,
   Modal,
   ModalVariant,
   TreeView,
@@ -149,8 +151,8 @@ const ColumnSelector = props => {
   };
 
   return (
-    <div className="pf-v5-c-select-input">
-      <div className="pf-v5-c-input-group" id="column-selector">
+    <InputGroup id="column-selector">
+      <InputGroupItem>
         <Button
           ouiaId="manage-columns-button"
           id="btn-select-columns"
@@ -199,8 +201,8 @@ const ColumnSelector = props => {
         >
           <TreeView data={selectedColumns} onCheck={onCheck} hasCheckboxes />
         </Modal>
-      </div>
-    </div>
+      </InputGroupItem>
+    </InputGroup>
   );
 };
 

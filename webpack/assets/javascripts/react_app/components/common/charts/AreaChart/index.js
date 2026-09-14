@@ -18,21 +18,22 @@ import {
   createContainer,
   getTheme,
 } from '@patternfly/react-charts';
-import MessageBox from '../../MessageBox';
+import { Icon } from '@patternfly/react-core';
+import { InfoCircleIcon } from '@patternfly/react-icons';
+import { processChartData, getYTickValues } from './AreaChartHelpers';
+import EmptyState from '../../EmptyState';
 import {
-  processChartData,
-  getSeriesOpacity,
   buildLegendData,
-  getLegendEvents,
-  getYTickValues,
-  getXAxisTickValues,
-  formatTooltipTitle,
   formatAxisTick,
+  formatTooltipTitle,
   formatYAxisTick,
-  InteractiveLegendSymbol,
+  getLegendEvents,
+  getSeriesOpacity,
+  getXAxisTickValues,
   InteractiveLegendLabel,
+  InteractiveLegendSymbol,
   XAxisTickLabel,
-} from './AreaChartLegend';
+} from '../helpers/LegendHelpers';
 import {
   areaChartPropTypes,
   areaChartDefaultProps,
@@ -146,7 +147,17 @@ const AreaChart = ({
   }, []);
 
   if (!chartData) {
-    return <MessageBox msg={noDataMsg} icontype="info" />;
+    return (
+      <EmptyState
+        variant="xs"
+        icon={
+          <Icon iconSize="lg">
+            <InfoCircleIcon />
+          </Icon>
+        }
+        header={noDataMsg}
+      />
+    );
   }
 
   const chartHeight = size?.height ?? observedSize.height;

@@ -1,5 +1,4 @@
-import { STATUS } from '../../../../constants';
-import { DownloadUtilities } from '../components/fields/DownloadUtility'
+import { DownloadUtilities } from '../components/fields/DownloadUtility';
 
 export const generalComponentProps = {
   organizationId: 0,
@@ -43,13 +42,6 @@ export const advancedComponentProps = {
   isLoading: false,
 };
 
-export const actionsComponentProps = {
-  isLoading: false,
-  isGenerating: false,
-  handleSubmit: () => {},
-  invalidFields: [],
-};
-
 export const commandComponentProps = {
   apiStatus: 'RESOLVED',
   command: 'command',
@@ -71,12 +63,6 @@ export const hostGroupProps = {
   hostGroups: [{ id: 0, title: 'test_hg' }],
 };
 
-export const insecureProps = {
-  insecure: false,
-  handleInsecure: () => {},
-  isLoading: false,
-};
-
 export const osProps = {
   operatingSystemId: 0,
   operatingSystems: [],
@@ -88,35 +74,9 @@ export const osProps = {
   isLoading: false,
 };
 
-export const packagesProps = {
-  packages: '',
-  handlePackages: () => {},
-  configParams: {},
-  isLoading: false,
-};
-
-export const updatePackagesProps = {
-  updatePackages: false,
-  handleUpdatePackages: () => {},
-  isLoading: false,
-};
-
-export const downloadUtilityProps = {
-  downloadUtility: DownloadUtilities.curl,
-  handleDownloadUtility: () => {},
-  isLoading: false,
-};
-
 export const repositoryProps = {
   repoData: [],
   handleRepoData: () => {},
-  isLoading: false,
-};
-
-export const smartProxyProps = {
-  smartProxyId: 0,
-  smartProxies: [],
-  handleSmartProxy: () => {},
   isLoading: false,
 };
 
@@ -135,38 +95,6 @@ export const tokenLifeTimeProps = {
   onChange: () => {},
   handleInvalidField: () => {},
   isLoading: false,
-};
-
-/* Integration fixtures */
-
-export const spySelector = selectors => {
-  jest.spyOn(selectors, 'selectAPIStatusData');
-  jest.spyOn(selectors, 'selectOrganizations');
-  jest.spyOn(selectors, 'selectLocations');
-  jest.spyOn(selectors, 'selectHostGroups');
-  jest.spyOn(selectors, 'selectOperatingSystems');
-  jest.spyOn(selectors, 'selectOperatingSystemTemplate');
-  jest.spyOn(selectors, 'selectSmartProxies');
-  jest.spyOn(selectors, 'selectConfigParams');
-  jest.spyOn(selectors, 'selectPluginData');
-  jest.spyOn(selectors, 'selectAPIStatusCommand');
-  jest.spyOn(selectors, 'selectCommand');
-  jest.spyOn(selectors, 'selectApiDataResponseCode');
-
-  selectors.selectAPIStatusData.mockImplementation(() => STATUS.RESOLVED);
-  selectors.selectOrganizations.mockImplementation(
-    () => formData.organizations
-  );
-  selectors.selectLocations.mockImplementation(() => formData.locations);
-  selectors.selectHostGroups.mockImplementation(() => []);
-  selectors.selectOperatingSystems.mockImplementation(() => []);
-  selectors.selectOperatingSystemTemplate.mockImplementation(() => '');
-  selectors.selectSmartProxies.mockImplementation(() => []);
-  selectors.selectConfigParams.mockImplementation(() => ({}));
-  selectors.selectPluginData.mockImplementation(() => {});
-  selectors.selectAPIStatusCommand.mockImplementation(() => undefined);
-  selectors.selectCommand.mockImplementation(() => '');
-  selectors.selectApiDataResponseCode.mockImplementation(() => null);
 };
 
 export const formData = {

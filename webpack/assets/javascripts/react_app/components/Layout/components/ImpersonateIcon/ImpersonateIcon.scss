@@ -22,7 +22,11 @@
   animation: blink normal 1s infinite ease-in-out; /* Opera and prob css3 final iteration */
 }
 
-.pf-v5-c-masthead {
+#foreman-page .pf-v5-c-masthead {
+  .stop-impersonation-icon {
+    padding: 0;
+  }
+
   .nav-item-iconic .blink-image {
     color: $color-pf-gold-200;
   }

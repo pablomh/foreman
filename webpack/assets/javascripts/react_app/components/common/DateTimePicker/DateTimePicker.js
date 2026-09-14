@@ -59,7 +59,8 @@ const DateTimePicker = ({
       intervalRef.current = null;
     }
     updateError();
-    intervalRef.current = setInterval(updateError, 30000); // make sure the error is updated every 30 seconds so isFutureOnly is always up to date
+    const ERROR_UPDATE_INTERVAL = 30000;
+    intervalRef.current = setInterval(updateError, ERROR_UPDATE_INTERVAL);
     return () => {
       if (intervalRef.current) {
         clearInterval(intervalRef.current);
@@ -158,7 +159,9 @@ const DateTimePicker = ({
         }
       >
         <InputGroup>
-          <InputGroupItem className="pf-v5-c-date-picker__input pf-v5-c-date-picker ">
+          {/* Simulates a DatePicker input */}
+          {/* eslint-disable-next-line @theforeman/rules/prefer-pf-components */}
+          <InputGroupItem className="pf-v5-c-date-picker__input pf-v5-c-date-picker">
             <TextInput
               ouiaId="datetime-picker-input"
               type="text"
@@ -174,7 +177,6 @@ const DateTimePicker = ({
               isRequired={required}
               validated={errorText ? 'error' : 'default'}
               placeholder="YYYY-MM-DD HH:MM"
-              className=" pf-v5-c-form-control"
               {...inputProps}
             />
           </InputGroupItem>

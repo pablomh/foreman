@@ -5,7 +5,7 @@ import * as ReactRedux from 'react-redux';
 import configureMockStore from 'redux-mock-store';
 import thunk from 'redux-thunk';
 import '@testing-library/jest-dom';
-import HostsIndex from './index';
+import HostsIndex, { getScheduleJobSearch } from './index';
 
 const mockStore = configureMockStore([thunk]);
 
@@ -85,6 +85,8 @@ jest.mock('../../Root/Context/ForemanContext', () => ({
   })),
   useForemanHostsPageUrl: jest.fn(() => '/hosts'),
   useForemanContext: jest.fn(() => ({})),
+  useForemanOrganization: jest.fn(() => undefined),
+  useForemanLocation: jest.fn(() => undefined),
 }));
 
 jest.mock('../common/Slot', () => ({
@@ -126,7 +128,6 @@ jest.mock('../PF4/TableIndexPage/TableIndexPage', () => ({
 
 describe('HostsIndex', () => {
   const store = mockStore({
-    foremanModals: {},
     API: {
       HOSTGROUP_KEY: { status: 'RESOLVED', response: { results: [] } },
       BULK_REASSIGN_HOSTGROUP_KEY: { status: undefined },
@@ -154,5 +155,35 @@ describe('HostsIndex', () => {
       page: 2, // From API response, not from params state (which has 1)
       per_page: 20, // From API response, not from params state (which has 10)
     });
+  });
+
+  test('returns an explicit all-hosts search for empty select-all queries', () => {
+    expect(
+      getScheduleJobSearch({
+        selectedCount: 100,
+        areAllRowsSelected: true,
+        selectedHostsSearch: '',
+      })
+    ).toBe('name ~ *');
+  });
+
+  test('does not append the all-hosts fallback to a non-empty select-all search', () => {
+    expect(
+      getScheduleJobSearch({
+        selectedCount: 1,
+        areAllRowsSelected: true,
+        selectedHostsSearch: 'name = "centos9-katello-devel.example.com"',
+      })
+    ).toBe('name = "centos9-katello-devel.example.com"');
+  });
+
+  test('does not use the all-hosts fallback when select-all is not active', () => {
+    expect(
+      getScheduleJobSearch({
+        selectedCount: 1,
+        areAllRowsSelected: false,
+        selectedHostsSearch: '',
+      })
+    ).toBe('');
   });
 });

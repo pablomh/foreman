@@ -64,6 +64,81 @@ class TaxonomyTest < ActiveSupport::TestCase
     end
   end
 
+  test 'batch_subtree_ids returns empty array for empty input' do
+    assert_empty Taxonomy.batch_subtree_ids([])
+  end
+
+  test 'batch_subtree_ids returns subtree for a single taxonomy' do
+    parent = FactoryBot.create(:organization)
+    child = FactoryBot.create(:organization, parent: parent)
+    grandchild = FactoryBot.create(:organization, parent: child)
+
+    result = Taxonomy.batch_subtree_ids([parent])
+    assert_equal [parent.id, child.id, grandchild.id].sort, result
+  end
+
+  test 'batch_subtree_ids returns union of subtrees for multiple taxonomies' do
+    org1 = FactoryBot.create(:organization)
+    org1_child = FactoryBot.create(:organization, parent: org1)
+    org2 = FactoryBot.create(:organization)
+    org2_child = FactoryBot.create(:organization, parent: org2)
+
+    result = Taxonomy.batch_subtree_ids([org1, org2])
+    assert_equal [org1.id, org1_child.id, org2.id, org2_child.id].sort, result
+  end
+
+  test 'batch_subtree_ids handles overlapping subtrees' do
+    parent = FactoryBot.create(:organization)
+    child = FactoryBot.create(:organization, parent: parent)
+    grandchild = FactoryBot.create(:organization, parent: child)
+
+    result = Taxonomy.batch_subtree_ids([parent, child])
+    assert_equal [parent.id, child.id, grandchild.id].sort, result
+  end
+
+  test 'batch_subtree_ids returns deterministic order' do
+    orgs = Array.new(3) { FactoryBot.create(:organization) }
+    result = Taxonomy.batch_subtree_ids(orgs)
+    assert_equal 3, result.size
+    assert_equal result.sort, result
+  end
+
+  test 'ignoring returns taxonomies that ignore the given type' do
+    ignoring = FactoryBot.create(:organization, ignore_types: ['User'])
+    not_ignoring = FactoryBot.create(:organization, ignore_types: [])
+
+    result = Organization.unscoped.ignoring(User)
+    assert_includes result, ignoring
+    refute_includes result, not_ignoring
+  end
+
+  test 'batch_subtree_ids matches individual subtree_ids' do
+    parent = FactoryBot.create(:organization)
+    child = FactoryBot.create(:organization, parent: parent)
+    FactoryBot.create(:organization, parent: child)
+    standalone = FactoryBot.create(:organization)
+
+    inputs = [parent, child, standalone]
+    assert_equal inputs.flat_map(&:subtree_ids).uniq.sort,
+      Taxonomy.batch_subtree_ids(inputs)
+  end
+
+  test 'batch_subtree_ids returns only the given node for a leaf taxonomy' do
+    leaf = FactoryBot.create(:organization)
+    assert_equal [leaf.id], Taxonomy.batch_subtree_ids([leaf])
+  end
+
+  test 'batch_subtree_ids raises on mixed taxonomy types' do
+    org = FactoryBot.create(:organization)
+    loc = FactoryBot.create(:location)
+    assert_raises(ArgumentError) { Taxonomy.batch_subtree_ids([org, loc]) }
+  end
+
+  test 'batch_subtree_ids raises on unsaved records' do
+    org = FactoryBot.build(:organization)
+    assert_raises(ArgumentError) { Taxonomy.batch_subtree_ids([org]) }
+  end
+
   test "taxonomy cannot be saved with orphans" do
     location = Location.create :name => "Velky Tynec"
     organization = Organization.create :name => "Olomouc"
@@ -72,5 +147,51 @@ class TaxonomyTest < ActiveSupport::TestCase
     assert_match /expecting locations/, organization.errors.messages[:locations].first
     location.save
     assert_match /expecting organizations/, location.errors.messages[:organizations].first
+  end
+
+  test 'ignoring finds taxonomies with exact type match' do
+    org_with_user = FactoryBot.create(:organization, ignore_types: ['User', 'Domain'])
+    org_with_host = FactoryBot.create(:organization, ignore_types: ['Host'])
+    org_empty = FactoryBot.create(:organization, ignore_types: [])
+
+    result = Organization.ignoring('User')
+    assert_includes result, org_with_user
+    refute_includes result, org_with_host
+    refute_includes result, org_empty
+  end
+
+  test 'ignoring does not over-match similar class names' do
+    # JSONB containment prevents over-matching (e.g. 'User' should NOT match 'UserGroup')
+    org_user = FactoryBot.create(:organization, ignore_types: ['User'])
+    org_usergroup = FactoryBot.create(:organization, ignore_types: ['UserGroup'])
+
+    result_user = Organization.ignoring('User')
+    assert_includes result_user, org_user
+    refute_includes result_user, org_usergroup
+
+    result_usergroup = Organization.ignoring('UserGroup')
+    assert_includes result_usergroup, org_usergroup
+    refute_includes result_usergroup, org_user
+  end
+
+  test 'ignoring handles empty ignore_types' do
+    org_with_types = FactoryBot.create(:organization, ignore_types: ['User'])
+    org_empty = FactoryBot.create(:organization, ignore_types: [])
+    org_nil = FactoryBot.create(:organization)
+    org_nil.update_column(:ignore_types, nil) unless org_nil.ignore_types.nil?
+
+    result = Organization.ignoring('User')
+    assert_includes result, org_with_types
+    refute_includes result, org_empty
+    refute_includes result, org_nil
+  end
+
+  test 'ignoring works with multiple types' do
+    org = FactoryBot.create(:organization, ignore_types: ['User', 'Domain', 'Subnet'])
+
+    assert_includes Organization.ignoring('User'), org
+    assert_includes Organization.ignoring('Domain'), org
+    assert_includes Organization.ignoring('Subnet'), org
+    refute_includes Organization.ignoring('Host'), org
   end
 end

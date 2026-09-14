@@ -10,9 +10,11 @@ import {
   ChartVoronoiContainer,
   getTheme,
 } from '@patternfly/react-charts';
+import { Icon } from '@patternfly/react-core';
+import { InfoCircleIcon } from '@patternfly/react-icons';
 import { noop } from '../../../../common/helpers';
 import { translate as __ } from '../../../../common/I18n';
-import MessageBox from '../../MessageBox';
+import EmptyState from '../../EmptyState';
 import BarChartHtmlTooltip from './BarChartHtmlTooltip';
 import './BarChart.scss';
 
@@ -43,7 +45,8 @@ const getTooltipValue = datum => {
 /** Match native JS: use scientific notation for very large magnitudes (avoids float width bugs). */
 const formatYAxisTick = t => {
   const num = Number(t);
-  if (Math.abs(num) >= 1e21) {
+  const SCIENTIFIC_NOTATION_THRESHOLD = 1e21;
+  if (Math.abs(num) >= SCIENTIFIC_NOTATION_THRESHOLD) {
     return num.toExponential(1);
   }
   return num.toFixed(1);
@@ -60,7 +63,9 @@ const CHART_PADDING_BASE = {
   right: 20,
   top: 10,
 };
-const DOMAIN_PADDING = { x: [30, 25] };
+const BAR_DOMAIN_PADDING_LEFT = 30;
+const DOMAIN_PADDING = { x: [BAR_DOMAIN_PADDING_LEFT, 25] };
+const TOOLTIP_BASE_WIDTH = 100;
 const TOOLTIP = {
   width: 140,
   height: 70,
@@ -97,7 +102,17 @@ const BarChart = ({
 
   // Handle empty data
   if (!chartData.length) {
-    return <MessageBox msg={noDataMsg} icontype="info" />;
+    return (
+      <EmptyState
+        variant="xs"
+        icon={
+          <Icon iconSize="lg">
+            <InfoCircleIcon />
+          </Icon>
+        }
+        header={noDataMsg}
+      />
+    );
   }
 
   const dimensions = {
@@ -117,7 +132,7 @@ const BarChart = ({
   const maxTooltipString = getTooltipValue({ y: maxY });
   const dynamicTooltipWidth = Math.max(
     TOOLTIP.width,
-    100 + maxTooltipString.length * 8
+    TOOLTIP_BASE_WIDTH + maxTooltipString.length * 8
   );
 
   // Handle click events

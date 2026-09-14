@@ -8,6 +8,28 @@ export const searchLink = ({ query, message, baseUrl }) => ({
   href: urlWithSearch(baseUrl, query),
 });
 
+export const bulkActionTaxonomyParams = ({
+  organizationId,
+  locationId,
+} = {}) => ({
+  ...(organizationId != null ? { organization_id: organizationId } : {}),
+  ...(locationId != null ? { location_id: locationId } : {}),
+});
+
+export const buildBulkRequestBody = ({
+  fetchBulkParams,
+  organizationId,
+  locationId,
+  includedSearch,
+  ...params
+}) => ({
+  included: {
+    search: includedSearch || fetchBulkParams(),
+  },
+  ...bulkActionTaxonomyParams({ organizationId, locationId }),
+  ...params,
+});
+
 export const failedHostsToastParams = ({
   message,
   failed_host_ids: failedHostIds,
@@ -29,4 +51,17 @@ export const failedHostsToastParams = ({
   }
 
   return toastParams;
+};
+
+export const bulkErrorToastParams = (error, key) => {
+  const fallback = error?.message || __('Unexpected error occurred.');
+  const apiError = error?.response?.data?.error;
+  const isObject = apiError && typeof apiError === 'object';
+  const message = isObject ? apiError.message : apiError;
+
+  return failedHostsToastParams({
+    message: message || fallback,
+    failed_host_ids: isObject ? apiError.failed_host_ids : undefined,
+    key,
+  });
 };

@@ -28,17 +28,17 @@ class FactImporter
     @error    = false
     @host     = host
     @facts    = normalize(facts)
-    @counters = {}
+    @counters = { added: 0, updated: 0, deleted: 0 }
   end
 
   # expect a facts hash
-  def import!
+  def import!(additive: false)
     # This function uses its own transactions that should not be included
     # in the transaction that handles fact values
     ensure_fact_names
 
     ActiveRecord::Base.transaction do
-      delete_removed_facts
+      delete_removed_facts unless additive
       update_facts
       add_new_facts
     end
@@ -121,17 +121,31 @@ class FactImporter
 
   def add_new_fact(name)
     # if the host does not exist yet, we don't have an host_id to use the fact_values table.
-    method = host.new_record? ? :build : :create!
-    fact_name = fact_names[name]
-    host.fact_values.send(method, :value => facts[name], :fact_name => fact_name)
+    host.fact_values.build(:value => facts[name], :fact_name => fact_names[name])
   rescue => e
     logger.error("Fact #{name} could not be imported because of #{e.message}")
     @error = e
   end
 
   def add_new_facts
-    facts_to_create.each { |f| add_new_fact(f) }
+    if host.new_record?
+      facts_to_create.each_key { |name| add_new_fact(name) }
+    else
+      bulk_insert_new_fact_values(facts_to_create)
+    end
     @counters[:added] = facts_to_create.size
+  end
+
+  def bulk_insert_new_fact_values(new_facts)
+    return if new_facts.empty?
+
+    records = new_facts.map do |name, value|
+      { value: value, fact_name_id: fact_names[name].id }
+    end
+    host.fact_values.insert_all(records, unique_by: [:fact_name_id, :host_id], record_timestamps: true)
+  rescue => e
+    logger.error("Facts could not be imported because of #{e.message}")
+    @error = e
   end
 
   def update_facts
@@ -148,7 +162,7 @@ class FactImporter
       end
     end
     db_facts_names = db_facts.map(&:first) & fact_names.keys
-    @facts_to_create = facts.keys - db_facts_names
+    @facts_to_create = facts.except(*db_facts_names)
     @counters[:updated] = updated
   end
 

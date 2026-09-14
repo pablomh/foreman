@@ -10,15 +10,9 @@ import {
   TreeView,
 } from '@patternfly/react-core';
 import { addToast } from '../../../ToastsList/slice';
-import { foremanUrl } from '../../../../common/helpers';
 import { translate as __ } from '../../../../common/I18n';
 import { BULK_DISASSOCIATE_KEY, bulkDisassociate } from './actions';
-import { APIActions } from '../../../../redux/API';
-import {
-  HOSTS_API_PATH,
-  API_REQUEST_KEY,
-} from '../../../../routes/Hosts/constants';
-import { failedHostsToastParams } from '../helpers';
+import { buildBulkRequestBody, bulkErrorToastParams } from '../helpers';
 
 const BulkDisassociateModal = ({
   isOpen,
@@ -27,6 +21,9 @@ const BulkDisassociateModal = ({
   selectedCount,
   selectedResults,
   fetchBulkParams,
+  organizationId,
+  locationId,
+  onSuccess: onSuccessCallback,
 }) => {
   const dispatch = useDispatch();
   const hostsWithComputeResource = selectedResults?.filter(
@@ -59,16 +56,9 @@ const BulkDisassociateModal = ({
     },
   ];
 
-  const handleError = response => {
+  const handleError = error => {
     closeModal();
-    dispatch(
-      addToast(
-        failedHostsToastParams({
-          ...response.data.error,
-          key: BULK_DISASSOCIATE_KEY,
-        })
-      )
-    );
+    dispatch(addToast(bulkErrorToastParams(error, BULK_DISASSOCIATE_KEY)));
   };
 
   const handleSuccess = response => {
@@ -78,12 +68,7 @@ const BulkDisassociateModal = ({
         message: response.data.message,
       })
     );
-    dispatch(
-      APIActions.get({
-        key: API_REQUEST_KEY,
-        url: foremanUrl(HOSTS_API_PATH),
-      })
-    );
+    if (onSuccessCallback) onSuccessCallback();
     closeModal();
   };
 
@@ -91,11 +76,12 @@ const BulkDisassociateModal = ({
     const queryString = selectedResultsEmpty
       ? fetchBulkParams()
       : `id ^ (${hostsWithComputeResource.map(h => h.id).join(',')})`;
-    const requestBody = {
-      included: {
-        search: queryString,
-      },
-    };
+    const requestBody = buildBulkRequestBody({
+      fetchBulkParams,
+      organizationId,
+      locationId,
+      includedSearch: queryString,
+    });
 
     dispatch(bulkDisassociate(requestBody, handleSuccess, handleError));
   };
@@ -188,12 +174,18 @@ BulkDisassociateModal.propTypes = {
   fetchBulkParams: PropTypes.func.isRequired,
   selectedCount: PropTypes.number.isRequired,
   selectAllHostsMode: PropTypes.bool.isRequired,
+  organizationId: PropTypes.number,
+  locationId: PropTypes.number,
+  onSuccess: PropTypes.func,
 };
 
 BulkDisassociateModal.defaultProps = {
   isOpen: false,
   closeModal: () => {},
   selectedResults: [],
+  organizationId: undefined,
+  locationId: undefined,
+  onSuccess: undefined,
 };
 
 export default BulkDisassociateModal;

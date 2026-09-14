@@ -71,6 +71,12 @@ FactoryBot.define do
       layout { "select disk 0\nclean\nconvert gpt\ncreate partition efi size=200\nformat quick fs=fat32 label=\"System\"\nassign letter=\"S\"\ncreate partition msr size=16\ncreate partition primary\nformat quick fs=ntfs label=\"Windows\"\nassign letter=\"W\"\nlist volume\nexit" }
       os_family { 'Windows' }
     end
+
+    trait :freebsd do
+      sequence(:name) { |n| "freebsd default#{n}" }
+      layout { "# Not supported with zfsinstall" }
+      os_family { 'Freebsd' }
+    end
   end
 
   factory :parameter do
@@ -406,6 +412,10 @@ FactoryBot.define do
         operatingsystem { FactoryBot.build(:for_snapshots_rocky10) }
       end
 
+      trait :with_freebsd do
+        operatingsystem { FactoryBot.build(:for_snapshots_freebsd) }
+      end
+
       factory :host_for_snapshots_ipv4_dhcp_windows10 do
         operatingsystem { FactoryBot.build(:for_snapshots_windows10) }
       end
@@ -418,7 +428,7 @@ FactoryBot.define do
         # add taxonomy overrides in case it's set in the host object
         taxonomies[:locations] = [location] unless location.nil?
         taxonomies[:organizations] = [organization] unless organization.nil?
-        FactoryBot.create(:libvirt_cr, taxonomies)
+        FactoryBot.create(compute_resource_factory_name, taxonomies)
       end
       domain
       subnet do
@@ -445,7 +455,7 @@ FactoryBot.define do
         # add taxonomy overrides in case it's set in the host object
         taxonomies[:locations] = [location] unless location.nil?
         taxonomies[:organizations] = [organization] unless organization.nil?
-        FactoryBot.create(:libvirt_cr, taxonomies)
+        FactoryBot.create(compute_resource_factory_name, taxonomies)
       end
       subnet do
         overrides = {:dns => FactoryBot.create(:dns_smart_proxy)}
@@ -476,7 +486,7 @@ FactoryBot.define do
         # add taxonomy overrides in case it's set in the host object
         taxonomies[:locations] = [location] unless location.nil?
         taxonomies[:organizations] = [organization] unless organization.nil?
-        FactoryBot.create(:libvirt_cr, taxonomies)
+        FactoryBot.create(compute_resource_factory_name, taxonomies)
       end
       subnet6 do
         overrides = {:dns => FactoryBot.create(:dns_smart_proxy)}
@@ -651,7 +661,7 @@ FactoryBot.define do
     end
 
     trait :with_compute_resource do
-      compute_resource { FactoryBot.create(:compute_resource, :libvirt) }
+      compute_resource { FactoryBot.create(compute_resource_factory_name) }
     end
 
     trait :with_config_group do

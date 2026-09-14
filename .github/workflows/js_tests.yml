@@ -31,12 +31,12 @@ jobs:
       matrix: ${{ fromJson(needs.setup_matrix.outputs.matrix) }}
     steps:
       - name: Checkout Foreman
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
       - uses: ruby/setup-ruby@v1
         with:
           ruby-version: ${{ matrix.ruby }}
       - name: Setup Node ${{ matrix.node }}
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: ${{ matrix.node }}
       - name: Generate npm dependencies package-lock
@@ -45,6 +45,8 @@ jobs:
         run: npm ci --no-audit
       - name: Run linter
         run: npm run lint
+      - name: Run stylelint
+        run: npm run stylelint
       - name: Run tests
         run: npm run test
       - name: Publish Coveralls

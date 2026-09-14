@@ -15,6 +15,7 @@ import { changeQuery } from '../../../common/urlHelpers';
 import BreadcrumbBar from '../../../components/BreadcrumbBar';
 import SearchBar from '../../../components/SearchBar';
 import Head from '../../../components/Head';
+import './PageLayout.scss';
 
 const PageLayout = ({
   searchable,
@@ -24,19 +25,29 @@ const PageLayout = ({
   customBreadcrumbs,
   breadcrumbOptions,
   toolbarButtons,
+  customToolbar,
   header,
+  customHeader,
   beforeToolbarComponent,
   isLoading,
   pageSectionType,
   children,
 }) => {
-  const title = (
+  const titleSectionBody = customHeader ?? (
     <TextContent>
       <Text ouiaId="breadcrumb_title" component="h1">
         {header}
       </Text>
     </TextContent>
   );
+
+  const showStandaloneTitleSection = searchable || !toolbarButtons;
+
+  const toolbarSectionShowsDefaultToolbar =
+    !customToolbar && (searchable || isLoading || toolbarButtons);
+
+  const showToolbarSection =
+    toolbarSectionShowsDefaultToolbar || Boolean(customToolbar);
 
   return (
     <>
@@ -48,56 +59,74 @@ const PageLayout = ({
         <PageSection variant={PageSectionVariants.light} type="breadcrumb">
           <div id="breadcrumb">
             {customBreadcrumbs ||
-              (breadcrumbOptions && <BreadcrumbBar {...breadcrumbOptions} />)}
+              (breadcrumbOptions && (
+                <BreadcrumbBar {...breadcrumbOptions} isPf4 />
+              ))}
           </div>
         </PageSection>
       )}
 
-      {(searchable || !toolbarButtons) && (
-        <PageSection variant={PageSectionVariants.light} type="breadcrumb">
-          <div id="breadcrumb">{title}</div>
+      {showStandaloneTitleSection && (
+        <PageSection
+          id="page-layout-title-section"
+          variant={PageSectionVariants.light}
+        >
+          <div id="page-title">{titleSectionBody}</div>
         </PageSection>
       )}
 
-      {(searchable ||
-        beforeToolbarComponent ||
-        isLoading ||
-        toolbarButtons) && (
+      {beforeToolbarComponent}
+
+      {showToolbarSection && (
         <PageSection
+          id="page-layout-toolbar-section"
           variant={PageSectionVariants.light}
-          className="page-toolbar-section"
         >
-          {beforeToolbarComponent}
-          <Toolbar ouiaId="page-toolbar">
-            <ToolbarContent>
-              <ToolbarItem widths={{ default: '50%' }}>
-                {!searchable && toolbarButtons && title}
-                {searchable && (
-                  <SearchBar
-                    data={{
-                      ...searchProps,
-                      autocomplete: {
-                        ...searchProps.autocomplete,
-                        searchQuery,
-                      },
-                    }}
-                    onSearch={onSearch}
-                  />
-                )}
-              </ToolbarItem>
-              {isLoading && (
-                <ToolbarItem alignSelf="center" id="toolbar-spinner">
-                  <Spinner size="md" />
-                </ToolbarItem>
-              )}
-              <ToolbarGroup align={{ default: 'alignRight' }}>
-                {toolbarButtons}
-              </ToolbarGroup>
-            </ToolbarContent>
-          </Toolbar>
+          {customToolbar || (
+            <Toolbar
+              ouiaId="page-toolbar"
+              className="page-toolbar"
+              id="page-layout-toolbar"
+            >
+              <ToolbarContent>
+                <ToolbarGroup
+                  className="page-layout-toolbar-group-search"
+                  variant="filter-group"
+                >
+                  {!searchable && toolbarButtons && titleSectionBody}
+                  {searchable && (
+                    <ToolbarItem id="page-layout-toolbar-search">
+                      <SearchBar
+                        data={{
+                          ...searchProps,
+                          autocomplete: {
+                            ...searchProps.autocomplete,
+                            searchQuery,
+                          },
+                        }}
+                        onSearch={onSearch}
+                      />
+                    </ToolbarItem>
+                  )}
+                  {isLoading && (
+                    <ToolbarItem alignSelf="center" id="toolbar-spinner">
+                      <Spinner size="md" />
+                    </ToolbarItem>
+                  )}
+                </ToolbarGroup>
+                <ToolbarGroup align={{ default: 'alignRight' }}>
+                  {toolbarButtons}
+                </ToolbarGroup>
+              </ToolbarContent>
+            </Toolbar>
+          )}
         </PageSection>
       )}
-      <PageSection variant={PageSectionVariants.light} type={pageSectionType}>
+      <PageSection
+        id="page-layout-content-section"
+        variant={PageSectionVariants.light}
+        type={pageSectionType}
+      >
         {children}
       </PageSection>
     </>
@@ -107,7 +136,6 @@ const PageLayout = ({
 PageLayout.propTypes = {
   children: PropTypes.node.isRequired,
   searchable: PropTypes.bool.isRequired,
-  header: PropTypes.string,
   searchProps: PropTypes.shape({
     autocomplete: PropTypes.shape({
       results: PropTypes.array,
@@ -147,6 +175,9 @@ PageLayout.propTypes = {
     ),
   }),
   toolbarButtons: PropTypes.node,
+  customToolbar: PropTypes.node,
+  header: PropTypes.string,
+  customHeader: PropTypes.node,
   onSearch: PropTypes.func,
   searchQuery: PropTypes.string,
   beforeToolbarComponent: PropTypes.node,
@@ -157,12 +188,14 @@ PageLayout.propTypes = {
 PageLayout.defaultProps = {
   searchProps: {},
   header: '',
+  customHeader: null,
   searchQuery: '',
   customBreadcrumbs: null,
   toolbarButtons: null,
+  customToolbar: null,
   breadcrumbOptions: null,
   isLoading: false,
-  onSearch: searchQuery => changeQuery({ search: searchQuery.trim(), page: 1 }),
+  onSearch: newSearch => changeQuery({ search: newSearch.trim(), page: 1 }),
   beforeToolbarComponent: null,
   pageSectionType: 'default',
 };

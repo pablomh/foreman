@@ -9,6 +9,9 @@ const BulkChangeOwnerModalScene = ({ isOpen, closeModal }) => {
     selectedCount,
     selectedResults,
     fetchBulkParams,
+    organizationId,
+    locationId,
+    refreshTableData,
   } = useContext(ForemanActionsBarContext);
   return (
     <BulkChangeOwnerModal
@@ -17,8 +20,11 @@ const BulkChangeOwnerModalScene = ({ isOpen, closeModal }) => {
       selectedCount={selectedCount}
       selectedResults={selectedResults}
       fetchBulkParams={fetchBulkParams}
+      organizationId={organizationId}
+      locationId={locationId}
       isOpen={isOpen}
       closeModal={closeModal}
+      onSuccess={refreshTableData}
     />
   );
 };

@@ -1,0 +1,15 @@
+.chart-legend-symbol {
+  cursor: pointer;
+}
+
+.chart-legend-label {
+  cursor: pointer;
+
+  &[data-hidden='true'] {
+    opacity: 0.4;
+  }
+
+  &[data-hovered='true'] {
+    filter: brightness(1.1);
+  }
+}

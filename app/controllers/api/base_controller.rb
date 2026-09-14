@@ -83,8 +83,15 @@ module Api
       association = resource_class.reflect_on_all_associations.detect { |assoc| assoc.plural_name == parent_name.pluralize }
       # if couldn't find an association by name, try to find one by class
       association ||= resource_class.reflect_on_all_associations.detect { |assoc| assoc.class_name == parent_name.camelize }
-      if association.nil? && parent_name == 'host'
-        association = resource_class.reflect_on_all_associations.detect { |assoc| assoc.class_name == 'Host::Base' }
+      # the parent might be an STI subclass (e.g. AuthSourceLdap < AuthSource, Host::Managed < Host::Base)
+      # while the association is declared against the STI base class, so fall back to a subclass check
+      if association.nil?
+        parent_class = resource_class_for(resource_name(parent_name))
+        association = resource_class.reflect_on_all_associations.detect do |assoc|
+          parent_class && !assoc.polymorphic? && parent_class <= assoc.klass
+        rescue NameError
+          false
+        end
       end
       return resource_class.all if association.nil? && Taxonomy.types.include?(resource_class_for(resource_name(parent_name)))
       raise "Association not found for #{parent_name}" unless association
@@ -311,7 +318,7 @@ module Api
     def setup_search_options
       params[:search] ||= ""
       params.each do |param, value|
-        if param =~ /(\w+)_id$/ && value.present?
+        if param.to_s =~ /(\w+)_id$/ && value.present?
           query = " #{Regexp.last_match(1)} = #{value}"
           params[:search] += query unless params[:search].include? query
         end
@@ -319,7 +326,7 @@ module Api
     end
 
     def log_response_body
-      logger.debug { "Body: #{response.body}" }
+      logger.debug { "Body: #{response.body}" } unless response.headers['Content-Disposition']&.include?('attachment')
     end
 
     private
@@ -416,7 +423,7 @@ module Api
 
     def parent_resource_details
       parent_name, parent_class, parent_id = nil
-      params.select { |param| param.ends_with?('_id') }.each do |param, value|
+      params.select { |param| allowed_nested_id.include?(param.to_s) }.each do |param, value|
         parent_id = value
         parent_name = param.delete_suffix('_id')
         parent_class = resource_class_for(resource_name(parent_name))

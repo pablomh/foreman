@@ -6,6 +6,8 @@ class SmartProxy < ApplicationRecord
   include Taxonomix
   include Parameterizable::ByIdName
 
+  serialize :unrecognized_features, Array
+
   validates_lengths_from_database
   before_destroy EnsureNotUsedBy.new(:hosts, :hostgroups, :subnets, :domains, [:puppet_ca_hosts, :hosts], [:puppet_ca_hostgroups, :hostgroups], :realms)
   # TODO check if there is a way to look into the tftp_id too
@@ -47,6 +49,12 @@ class SmartProxy < ApplicationRecord
     URI(url).host
   end
 
+  def self_or_colocated_with_feature(feature_name)
+    SmartProxy.unscoped.with_features(feature_name).find do |sp|
+      sp.hostname == hostname
+    end
+  end
+
   def to_s
     hostname
   end
@@ -77,8 +85,15 @@ class SmartProxy < ApplicationRecord
   def used_taxonomy_ids(type)
     return [] if new_record? || !respond_to?(:hosts)
 
-    conditions = "#{id} IN (#{Host::Managed.proxy_column_list})"
-    ::Host::Managed.with_smart_proxies.where(conditions).distinct.pluck(type).compact
+    host_taxonomy_ids_for_proxy(type) & allowed_taxonomy_ids_for_proxy(type)
+  end
+
+  # Host taxonomies where managed hosts still reference this proxy, but the proxy
+  # is not assigned to those taxonomies (subset of host_taxonomy_ids_for_proxy).
+  def host_taxonomy_ids_outside_proxy_assignment(type)
+    return [] if new_record? || !respond_to?(:hosts)
+
+    host_taxonomy_ids_for_proxy(type) - allowed_taxonomy_ids_for_proxy(type)
   end
 
   def taxonomy_foreign_conditions
@@ -154,6 +169,19 @@ class SmartProxy < ApplicationRecord
 
   private
 
+  def host_taxonomy_ids_for_proxy(type)
+    conditions = "#{id} IN (#{Host::Managed.proxy_column_list})"
+    ::Host::Managed.with_smart_proxies.where(conditions).distinct.pluck(type).compact.uniq
+  end
+
+  def allowed_taxonomy_ids_for_proxy(type)
+    case type
+    when :location_id then location_ids
+    when :organization_id then organization_ids
+    else raise ArgumentError, "type must be :location_id or :organization_id"
+    end
+  end
+
   def sanitize_url
     self.url = url.chomp('/') unless url.empty?
   end
@@ -168,15 +196,21 @@ class SmartProxy < ApplicationRecord
       end
 
       feature_name_map = Feature.name_map
-      valid_features = reply.select { |feature, options| feature_name_map.key?(feature) }
+      valid_features, unknown_features = reply.partition { |feature, _options| feature_name_map.key?(feature) }
+      valid_features = valid_features.to_h
+      self.unrecognized_features = unknown_features.map(&:first)
 
       if valid_features.any?
         SmartProxyFeature.import_features(self, valid_features)
+        if unrecognized_features.any?
+          logger.warn("Proxy #{name} has features not recognized by Foreman: #{unrecognized_features.to_sentence}. "\
+                      "This may indicate missing Foreman plugins, a version mismatch, or custom proxy extensions.")
+        end
       else
         smart_proxy_features.clear
         if reply.any?
           errors.add :base, _('Features "%s" in this proxy are not recognized by Foreman. '\
-                              'If these features come from a Smart Proxy plugin, make sure Foreman has the plugin installed too.') % reply.keys.to_sentence
+                              'If these features come from a Smart Proxy plugin, make sure Foreman has the plugin installed too.') % unrecognized_features.to_sentence
         else
           errors.add :base, _('No features found on this proxy, please make sure you enable at least one feature')
         end
@@ -213,8 +247,9 @@ class SmartProxy < ApplicationRecord
     property :httpboot_http_port!, Integer, desc: 'Same as httpboot_http_port, but raises Foreman::Exception if no port is set'
     property :httpboot_https_port, Integer, desc: 'Returns proxy port for HTTPS boot'
     property :httpboot_https_port!, Integer, desc: 'Same as httpboot_https_port, but raises Foreman::Exception if no port is set'
+    property :unrecognized_features, Array, desc: 'Returns array of feature names reported by proxy but not recognized by Foreman'
   end
   class Jail < ::Safemode::Jail
-    allow :id, :name, :hostname, :httpboot_http_port, :httpboot_https_port, :httpboot_http_port!, :httpboot_https_port!, :url
+    allow :id, :name, :hostname, :httpboot_http_port, :httpboot_https_port, :httpboot_http_port!, :httpboot_https_port!, :url, :unrecognized_features
   end
 end

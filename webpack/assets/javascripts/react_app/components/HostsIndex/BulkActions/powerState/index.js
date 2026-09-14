@@ -4,15 +4,22 @@ import { ForemanActionsBarContext } from '../../../../components/HostDetails/Act
 import BulkPowerStateModal from './BulkPowerStateModal';
 
 const BulkPowerStateModalScene = ({ isOpen, closeModal }) => {
-  const { fetchBulkParams, selectedCount = 0 } = useContext(
-    ForemanActionsBarContext
-  );
+  const {
+    fetchBulkParams,
+    selectedCount = 0,
+    organizationId,
+    locationId,
+    refreshTableData,
+  } = useContext(ForemanActionsBarContext);
   return (
     <BulkPowerStateModal
       selectedHostsCount={selectedCount}
       fetchBulkParams={fetchBulkParams}
+      organizationId={organizationId}
+      locationId={locationId}
       isOpen={isOpen}
       closeModal={closeModal}
+      onSuccess={refreshTableData}
     />
   );
 };

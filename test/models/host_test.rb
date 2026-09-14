@@ -352,6 +352,40 @@ class HostTest < ActiveSupport::TestCase
     assert_equal 'puppetca.example.com', host.puppet_ca_server
   end
 
+  test "should read the Puppet CA Server port from its proxy settings" do
+    host = FactoryBot.build_stubbed(:host)
+    assert_nil host.puppet_ca_server_port
+
+    proxy = FactoryBot.create(:puppet_ca_smart_proxy, url: 'https://smartproxy.example.com:8443')
+    host.puppet_ca_proxy = proxy
+    assert_equal 8140, host.puppet_ca_server_port
+
+    features = {
+      'puppetca' => {
+        settings: {'puppet_url': 'https://puppetca.example.com:8443'},
+      },
+    }
+    SmartProxyFeature.import_features(proxy, features)
+    assert_equal 8443, host.puppet_ca_server_port
+  end
+
+  test "should read the Puppet Server port from its proxy settings" do
+    host = FactoryBot.build_stubbed(:host)
+    assert_nil host.puppet_server_port
+
+    proxy = FactoryBot.create(:puppet_smart_proxy, url: 'https://smartproxy.example.com:8443')
+    host.puppet_proxy = proxy
+    assert_equal 8140, host.puppet_server_port
+
+    features = {
+      'puppet' => {
+        settings: {'puppet_url': 'https://puppet.example.com:8443'},
+      },
+    }
+    SmartProxyFeature.import_features(proxy, features)
+    assert_equal 8443, host.puppet_server_port
+  end
+
   test "should populate primary interface attributes even without existing interface" do
     host = FactoryBot.build(:host, :managed => false)
     host.interfaces = []
@@ -898,6 +932,21 @@ class HostTest < ActiveSupport::TestCase
     h.root_pass = "2short"
     h.valid?
     assert h.errors[:root_pass].include?("should be 8 characters or more")
+  end
+
+  test "should not allow short root passwords for managed host outside build mode" do
+    h = FactoryBot.create(:host, :managed)
+    h.build = false
+    h.root_pass = "2short"
+    h.valid?
+    assert h.errors[:root_pass].include?("should be 8 characters or more")
+  end
+
+  test "should allow blank root password for managed host outside build mode" do
+    h = FactoryBot.create(:host, :managed)
+    h.build = false
+    h.root_pass = ""
+    assert h.valid?
   end
 
   test "should allow build mode for managed hosts" do
@@ -1777,6 +1826,47 @@ class HostTest < ActiveSupport::TestCase
     assert_equal ["Common", "Common/db"].sort, hosts.map { |h| h.hostgroup.title }.sort
   end
 
+  test "can search hosts by parent hostgroup and its descendants using the ^ operator" do
+    parent_hostgroup = FactoryBot.create(:hostgroup)
+    child_hostgroup = FactoryBot.create(:hostgroup, parent: parent_hostgroup)
+    unrelated_hostgroup = FactoryBot.create(:hostgroup)
+
+    FactoryBot.create(:host, hostgroup: parent_hostgroup)
+    FactoryBot.create(:host, hostgroup: child_hostgroup)
+    FactoryBot.create(:host, hostgroup: unrelated_hostgroup)
+
+    hosts = Host::Managed.search_for("parent_hostgroup ^ (#{parent_hostgroup.title})")
+    assert_equal [parent_hostgroup.title, child_hostgroup.title].sort, hosts.map { |h| h.hostgroup.title }.sort
+
+    hosts = Host::Managed.search_for("parent_hostgroup ^ (#{parent_hostgroup.title}, #{unrelated_hostgroup.title})")
+    assert_equal [parent_hostgroup.title, child_hostgroup.title, unrelated_hostgroup.title].sort, hosts.map { |h| h.hostgroup.title }.sort
+  end
+
+  test "can search hosts excluding a parent hostgroup and its descendants" do
+    parent_hostgroup = FactoryBot.create(:hostgroup)
+    child_hostgroup = FactoryBot.create(:hostgroup, parent: parent_hostgroup)
+    unrelated_hostgroup = FactoryBot.create(:hostgroup)
+
+    FactoryBot.create(:host, hostgroup: parent_hostgroup)
+    FactoryBot.create(:host, hostgroup: child_hostgroup)
+    FactoryBot.create(:host, hostgroup: unrelated_hostgroup)
+
+    # descendants of the excluded hostgroup must not match through their own title
+    hosts = Host::Managed.search_for("parent_hostgroup !^ (#{parent_hostgroup.title})")
+    refute_includes hosts.map { |h| h.hostgroup&.title }, child_hostgroup.title
+    assert_includes hosts.map { |h| h.hostgroup&.title }, unrelated_hostgroup.title
+
+    hosts = Host::Managed.search_for("parent_hostgroup != #{parent_hostgroup.title}")
+    refute_includes hosts.map { |h| h.hostgroup&.title }, child_hostgroup.title
+  end
+
+  test "search hosts by non-existing parent hostgroup with the ^ operator returns no results" do
+    FactoryBot.create(:host, :with_hostgroup)
+    refute_equal Host::Managed.count, 0
+    hosts = Host::Managed.search_for("parent_hostgroup ^ (Nosuchgroup, Neitherthisone)")
+    assert_equal hosts.count, 0
+  end
+
   test "search hosts by non-existing parent hostgroup returns no results" do
     FactoryBot.create(:host, :with_hostgroup)
     refute_equal Host::Managed.count, 0
@@ -1948,6 +2038,19 @@ class HostTest < ActiveSupport::TestCase
         assert completions.include?(" facts.#{fact.name} "), "completion missing: #{fact}"
       end
     end
+  end
+
+  test "does not auto-complete operators unsupported by external methods" do
+    completed_operators = ->(key) { Host::Managed.complete_for("#{key} ").map { |completion| completion.split(' ').last } }
+
+    # smart_proxy, os_major and os_minor crash on IN/NOT IN, and comparing
+    # names with </> makes no sense
+    assert_equal ['=', '!=', '~', '!~'].sort, completed_operators.call('smart_proxy').sort
+    assert_equal ['=', '!=', '>', '<', '<=', '>=', '~', '!~'].sort, completed_operators.call('os_major').sort
+    assert_equal ['=', '!=', '>', '<', '<=', '>=', '~', '!~'].sort, completed_operators.call('os_minor').sort
+
+    # parent_hostgroup supports IN/NOT IN, but not </>
+    assert_equal ['=', '!=', '~', '!~', '^', '!^'].sort, completed_operators.call('parent_hostgroup').sort
   end
 
   test "can auto-complete user searches by current_user" do
@@ -2300,6 +2403,7 @@ class HostTest < ActiveSupport::TestCase
   end
 
   test "compute attributes are populated by hardware profile passed to host" do
+    skip_without_libvirt
     resource = FactoryBot.create(:libvirt_cr)
     profile = FactoryBot.create(:compute_profile)
     attribute = FactoryBot.create(:compute_attribute, :compute_resource => resource, :compute_profile => profile)
@@ -2901,6 +3005,7 @@ class HostTest < ActiveSupport::TestCase
     end
 
     test 'should take new hostgroup if hostgroup_id present' do
+      skip_without_libvirt
       host = FactoryBot.build_stubbed(:host, :managed, :with_hostgroup)
       new_compute_resource = FactoryBot.create(:compute_resource, :libvirt)
       new_hostgroup = FactoryBot.create(:hostgroup, compute_resource: new_compute_resource)
@@ -2913,6 +3018,7 @@ class HostTest < ActiveSupport::TestCase
     end
 
     test 'should take new hostgroup if hostgroup_name present' do
+      skip_without_libvirt
       host = FactoryBot.build_stubbed(:host, :managed, :with_hostgroup)
       new_compute_resource = FactoryBot.create(:compute_resource, :libvirt)
       new_hostgroup = FactoryBot.create(:hostgroup, compute_resource: new_compute_resource)
@@ -2925,6 +3031,7 @@ class HostTest < ActiveSupport::TestCase
     end
 
     test 'should take old hostgroup if hostgroup not updated' do
+      skip_without_libvirt
       hostgroup = FactoryBot.create(:hostgroup, :with_compute_resource)
       compute_resource = FactoryBot.create(:compute_resource, :libvirt)
       host = FactoryBot.build_stubbed(:host, :managed, hostgroup: hostgroup, compute_resource: compute_resource)
@@ -2958,6 +3065,7 @@ class HostTest < ActiveSupport::TestCase
     end
 
     test 'should inherit attribute value, if not set explicitly' do
+      skip_without_libvirt
       host = FactoryBot.build_stubbed(:host, :managed, :with_hostgroup)
       compute_resource = FactoryBot.create(:compute_resource, :libvirt)
       host.hostgroup.compute_resource = compute_resource

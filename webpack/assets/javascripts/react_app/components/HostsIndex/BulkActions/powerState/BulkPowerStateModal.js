@@ -19,20 +19,21 @@ import './BulkPowerStateModal.scss';
 import { HostsPowerRefreshContext } from '../../HostsPowerRefreshContext';
 import { POWER_STATES, BULK_POWER_STATE_KEY } from './constants';
 import { bulkChangePowerState } from './actions';
-import { failedHostsToastParams } from '../helpers';
-import { addToast } from '../../../ToastsList/slice';
 import {
-  HOSTS_API_PATH,
-  API_REQUEST_KEY,
-} from '../../../../routes/Hosts/constants';
-import { foremanUrl } from '../../../../common/helpers';
-import { APIActions } from '../../../../redux/API';
+  buildBulkRequestBody,
+  failedHostsToastParams,
+  bulkErrorToastParams,
+} from '../helpers';
+import { addToast } from '../../../ToastsList/slice';
 
 const BulkPowerStateModal = ({
   selectedHostsCount,
   fetchBulkParams,
+  organizationId,
+  locationId,
   isOpen,
   closeModal,
+  onSuccess: onSuccessCallback,
 }) => {
   const [isSelectOpen, setIsSelectOpen] = useState(false);
   const [selectedPowerState, setSelectedPowerState] = useState('');
@@ -58,20 +59,15 @@ const BulkPowerStateModal = ({
         message: response.data.message,
       })
     );
-    dispatch(
-      APIActions.get({
-        key: API_REQUEST_KEY,
-        url: foremanUrl(HOSTS_API_PATH),
-      })
-    );
-
+    if (onSuccessCallback) onSuccessCallback();
     cleanup();
   };
 
   const handleError = error => {
     const apiError = error?.response?.data?.error;
+    const isObject = apiError && typeof apiError === 'object';
 
-    if (apiError) {
+    if (isObject) {
       let enhancedError = apiError;
 
       if (apiError.failed_hosts && apiError.failed_hosts.length > 0) {
@@ -95,6 +91,8 @@ const BulkPowerStateModal = ({
           })
         )
       );
+    } else {
+      dispatch(addToast(bulkErrorToastParams(error, BULK_POWER_STATE_KEY)));
     }
 
     cleanup();
@@ -102,12 +100,12 @@ const BulkPowerStateModal = ({
 
   const handleSubmit = () => {
     setIsLoading(true);
-    const payload = {
-      included: {
-        search: fetchBulkParams(),
-      },
+    const payload = buildBulkRequestBody({
+      fetchBulkParams,
+      organizationId,
+      locationId,
       power: selectedPowerState,
-    };
+    });
     dispatch(bulkChangePowerState(payload, handleSuccess, handleError));
   };
 
@@ -174,6 +172,7 @@ const BulkPowerStateModal = ({
           toggle={toggleRef => (
             <MenuToggle
               ref={toggleRef}
+              ouiaId="power-state-toggle"
               onClick={() => setIsSelectOpen(!isSelectOpen)}
               isExpanded={isSelectOpen}
               style={{ width: '100%' }}
@@ -206,14 +205,20 @@ const BulkPowerStateModal = ({
 BulkPowerStateModal.propTypes = {
   selectedHostsCount: PropTypes.number,
   fetchBulkParams: PropTypes.func.isRequired,
+  organizationId: PropTypes.number,
+  locationId: PropTypes.number,
   isOpen: PropTypes.bool,
   closeModal: PropTypes.func,
+  onSuccess: PropTypes.func,
 };
 
 BulkPowerStateModal.defaultProps = {
   selectedHostsCount: 0,
+  organizationId: undefined,
+  locationId: undefined,
   isOpen: false,
   closeModal: () => {},
+  onSuccess: undefined,
 };
 
 export default BulkPowerStateModal;

@@ -6,6 +6,7 @@ module Foreman
       DEFAULT_ALLOWED_GENERIC_HELPERS = [
         :foreman_url,
         :force_url_https,
+        :parse_url,
         :snippet, :snippets,
         :snippet_if_exists,
         :indent,
@@ -77,7 +78,9 @@ module Foreman
         :host_param_true?, :host_param_false?,
         :host_param, :host_param!,
         :host_puppet_server,
+        :host_puppet_server_port,
         :host_puppet_ca_server,
+        :host_puppet_ca_server_port,
         :host_puppet_environment,
         :host_enc,
         :install_packages,

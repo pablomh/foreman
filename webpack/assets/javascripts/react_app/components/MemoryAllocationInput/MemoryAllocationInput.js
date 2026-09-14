@@ -1,9 +1,7 @@
-import RCInputNumber from 'rc-input-number';
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import PropTypes from 'prop-types';
-import { sprintf, translate as __ } from '../../common/I18n';
-import { MB_FORMAT, MEGABYTES } from './constants';
-import '../common/forms/NumericInput.scss';
+import { DEFAULT_MEMORY_MB, MB_FORMAT, BYTES_PER_MB } from './constants';
+import CounterInput from '../common/forms/CounterInput/CounterInput';
 import { noop } from '../../common/helpers';
 
 const MemoryAllocationInput = ({
@@ -18,57 +16,40 @@ const MemoryAllocationInput = ({
   setError,
   setWarning,
 }) => {
-  const [valueMB, setValueMB] = useState(value / MEGABYTES);
-
-  useEffect(() => {
-    const valueBytes = valueMB * MEGABYTES;
-    if (maxValue && valueBytes > maxValue) {
-      setWarning(null);
-      setError(
-        sprintf(
-          __('Specified value is higher than maximum value %s'),
-          `${maxValue / MEGABYTES} ${MB_FORMAT}`
-        )
-      );
-    } else if (recommendedMaxValue && valueBytes > recommendedMaxValue) {
-      setError(null);
-      setWarning(
-        sprintf(
-          __('Specified value is higher than recommended maximum %s'),
-          `${recommendedMaxValue / MEGABYTES} ${MB_FORMAT}`
-        )
-      );
-    } else {
-      setWarning(null);
-    }
-  }, [valueMB, recommendedMaxValue, maxValue, setError, setWarning]);
+  const [valueMB, setValueMB] = useState(Math.round(value / BYTES_PER_MB));
 
   const handleChange = v => {
-    if (v === valueMB + 1) {
-      v = valueMB * 2;
-    } else if (v === valueMB - 1) {
-      v = Math.floor(valueMB / 2);
-    }
     setValueMB(v);
-    onChange(v * MEGABYTES);
+    onChange(v * BYTES_PER_MB);
   };
-
+  const handlePlus = () => {
+    handleChange(valueMB * 2);
+  };
+  const handleMinus = () => {
+    handleChange(Math.floor(valueMB / 2));
+  };
   return (
     <>
-      <RCInputNumber
+      <CounterInput
+        unit={MB_FORMAT}
         value={valueMB}
         id={id}
-        formatter={v => `${v} ${MB_FORMAT}`}
-        parser={str => str.replace(/\D/g, '')}
         onChange={handleChange}
+        handlePlus={handlePlus}
+        handleMinus={handleMinus}
         disabled={disabled}
-        min={minValue && minValue / MEGABYTES}
-        step={1}
-        precision={0}
+        min={minValue ? Math.round(minValue / BYTES_PER_MB) : undefined}
+        max={maxValue ? Math.round(maxValue / BYTES_PER_MB) : undefined}
         name=""
-        prefixCls="foreman-numeric-input"
+        setError={setError}
+        setWarning={setWarning}
+        recommendedMaxValue={
+          recommendedMaxValue
+            ? Math.round(recommendedMaxValue / BYTES_PER_MB)
+            : undefined
+        }
       />
-      <input type="hidden" name={name} value={valueMB * MEGABYTES} />
+      <input type="hidden" name={name} value={valueMB * BYTES_PER_MB} />
     </>
   );
 };
@@ -97,7 +78,7 @@ MemoryAllocationInput.propTypes = {
 };
 
 MemoryAllocationInput.defaultProps = {
-  value: 2048 * MEGABYTES,
+  value: DEFAULT_MEMORY_MB * BYTES_PER_MB,
   onChange: noop,
   recommendedMaxValue: null,
   maxValue: null,

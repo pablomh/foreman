@@ -39,7 +39,9 @@ jobs:
     env:
       BUNDLE_WITHOUT: assets:console:development:dynflow_sidekiq:ec2:journald:jsonp:libvirt:openid:openstack:redis:service:telemetry:vmware
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
+      - run: sudo apt-get update
+      - run: sudo apt-get -qq -y install libcap-dev
       - name: Setup Ruby
         uses: ruby/setup-ruby@v1
         with:
@@ -77,27 +79,27 @@ jobs:
           - 'test:external'
     steps:
       - run: sudo apt-get update
-      - run: sudo apt-get -qq -y install build-essential libcurl4-openssl-dev zlib1g-dev libpq-dev libvirt-dev
+      - run: sudo apt-get -qq -y install build-essential libcurl4-openssl-dev zlib1g-dev libpq-dev libvirt-dev libcap-dev
       - name: generate artifact suffix
         run: echo "ARTIFACT_SUFFIX=$(echo 'ruby-${{ matrix.ruby }}-node-${{ matrix.node }}-pg-${{ matrix.postgresql }}-${{ matrix.task }}' | tr -cd '[:alnum:]-.')" >> "${GITHUB_ENV}"
       - name: "Check out Foreman"
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
       - name: "Set up Ruby ${{ matrix.ruby }}"
         uses: ruby/setup-ruby@v1
         with:
           ruby-version: ${{ matrix.ruby }}
           bundler-cache: true
       - name: Archive Gemfile.lock
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: Gemfile-${{ env.ARTIFACT_SUFFIX }}.lock
           path: Gemfile.lock
       - name: "Set up Node ${{ matrix.node }}"
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: ${{ matrix.node }}
       - name: Setup NPM Cache
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: ~/.npm
           key: ${{ runner.os }}-node-${{ matrix.node }}-${{ hashFiles('**/package.json') }}
@@ -108,7 +110,7 @@ jobs:
         run: npm install --package-lock-only --no-audit
         if: contains(matrix.task, 'compile')
       - name: Archive package-lock.json
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: package-lock-${{ env.ARTIFACT_SUFFIX }}.json
           path: package-lock.json
@@ -123,19 +125,19 @@ jobs:
         if: contains(matrix.task, 'external')
       - name: Prepare test env
         run: |
-          bundle exec rake db:create
-          bundle exec rake db:migrate
+          bin/rake db:create
+          bin/rake db:migrate
       - name: Run rake ${{ matrix.task }}
-        run: ${{ contains(matrix.task, 'apipie') && 'APIPIE_RECORD=examples FOREMAN_APIPIE_LANGS=en' || '' }} bundle exec rake ${{ matrix.task }}
+        run: ${{ contains(matrix.task, 'apipie') && 'APIPIE_RECORD=examples FOREMAN_APIPIE_LANGS=en' || '' }} bin/rake ${{ matrix.task }}
       - name: Archive apidoc
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         if: contains(matrix.task, 'apipie')
         with:
           name: apidoc-${{ env.ARTIFACT_SUFFIX }}
           path: public/apipie-cache/apidoc/
       - name: Archive all_react_app_exports
         if: contains(matrix.task, 'compile')
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: all_react_app_exports-${{ env.ARTIFACT_SUFFIX }}.js
           path: webpack/assets/javascripts/all_react_app_exports.js
@@ -144,7 +146,7 @@ jobs:
     name: Katello
     needs:
       - rubocop
-    uses: theforeman/actions/.github/workflows/foreman_plugin.yml@v0
+    uses: theforeman/actions/.github/workflows/foreman_plugin.yml@v1
     with:
       plugin: katello
       plugin_repository: Katello/katello

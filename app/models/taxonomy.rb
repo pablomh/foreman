@@ -5,7 +5,9 @@ class Taxonomy < ApplicationRecord
   include NestedAncestryCommon
   include TopbarCacheExpiry
 
-  serialize :ignore_types, Array
+  # ignore_types is a JSONB column storing an array of class names (e.g. ["User", "Domain"])
+  # JSONB provides exact matching via containment operator and supports GIN indexing for O(1) lookup
+  scope :ignoring, ->(type) { where("ignore_types @> ?", [type.to_s].to_json) }
 
   before_create :assign_default_templates
   after_create :assign_taxonomy_to_user
@@ -85,6 +87,28 @@ class Taxonomy < ApplicationRecord
 
   def self.types
     [Organization, Location]
+  end
+
+  def self.batch_subtree_ids(taxonomies)
+    return [] if taxonomies.empty?
+
+    raise ArgumentError, "batch_subtree_ids requires persisted records" if taxonomies.any?(&:new_record?)
+
+    klass = taxonomies.first.class
+    raise ArgumentError, "expected all taxonomies to be #{klass}, got: #{taxonomies.map(&:class).uniq.join(', ')}" unless taxonomies.all? { |t| t.is_a?(klass) }
+
+    sql_parts = ["#{klass.table_name}.id IN (?)"]
+    binds = [taxonomies.map(&:id)]
+
+    taxonomies.each do |tax|
+      ca = tax.child_ancestry
+      sql_parts << "#{klass.table_name}.ancestry LIKE ?"
+      binds << "#{sanitize_sql_like(ca)}/%"
+      sql_parts << "#{klass.table_name}.ancestry = ?"
+      binds << ca
+    end
+
+    klass.where(sql_parts.join(' OR '), *binds).reorder(:id).pluck(:id)
   end
 
   def self.ignore?(taxable_type)

@@ -7,33 +7,49 @@ import {
 } from './BulkAssignTaxonomyModal';
 
 export const BulkAssignOrganizationModalScene = ({ isOpen, closeModal }) => {
-  const { selectAllHostsMode, selectedCount, fetchBulkParams } = useContext(
-    ForemanActionsBarContext
-  );
+  const {
+    selectAllHostsMode,
+    selectedCount,
+    fetchBulkParams,
+    organizationId,
+    locationId,
+    refreshTableData,
+  } = useContext(ForemanActionsBarContext);
   return (
     <BulkAssignOrganizationModal
       key="bulk-assign-organization-modal"
       selectAllHostsMode={selectAllHostsMode}
       selectedCount={selectedCount}
       fetchBulkParams={fetchBulkParams}
+      organizationId={organizationId}
+      locationId={locationId}
       isOpen={isOpen}
       closeModal={closeModal}
+      onSuccess={refreshTableData}
     />
   );
 };
 
 export const BulkAssignLocationModalScene = ({ isOpen, closeModal }) => {
-  const { selectAllHostsMode, selectedCount, fetchBulkParams } = useContext(
-    ForemanActionsBarContext
-  );
+  const {
+    selectAllHostsMode,
+    selectedCount,
+    fetchBulkParams,
+    organizationId,
+    locationId,
+    refreshTableData,
+  } = useContext(ForemanActionsBarContext);
   return (
     <BulkAssignLocationModal
       key="bulk-assign-location-modal"
       selectAllHostsMode={selectAllHostsMode}
       selectedCount={selectedCount}
       fetchBulkParams={fetchBulkParams}
+      organizationId={organizationId}
+      locationId={locationId}
       isOpen={isOpen}
       closeModal={closeModal}
+      onSuccess={refreshTableData}
     />
   );
 };

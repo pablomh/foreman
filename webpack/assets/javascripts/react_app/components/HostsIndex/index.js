@@ -45,6 +45,8 @@ import {
   useForemanSettings,
   useForemanHostsPageUrl,
   useForemanContext,
+  useForemanOrganization,
+  useForemanLocation,
 } from '../../Root/Context/ForemanContext';
 import { bulkDeleteHosts } from './BulkActions/bulkDelete';
 import {
@@ -80,6 +82,16 @@ export const ForemanHostsIndexActionsBarContext = forceSingleton(
   () => createContext({})
 );
 
+export const getScheduleJobSearch = ({
+  selectedCount,
+  areAllRowsSelected,
+  selectedHostsSearch,
+}) => {
+  if (selectedCount === 0) return null;
+  if (areAllRowsSelected && selectedHostsSearch === '') return 'name ~ *';
+  return selectedHostsSearch;
+};
+
 const HostsIndex = () => {
   const [menuOpen, setMenuOpen] = useState(false);
   const [allColumns, setAllColumns] = useState(
@@ -104,6 +116,8 @@ const HostsIndex = () => {
     syncWithOptions: true,
   });
   const contextData = useForemanContext();
+  const currentOrganization = useForemanOrganization();
+  const currentLocation = useForemanLocation();
 
   const {
     response: {
@@ -188,6 +202,11 @@ const HostsIndex = () => {
     selectedResults,
   } = selectAllOptions;
   const selectAllHostsMode = areAllRowsSelected() && searchQuery === '';
+  const scheduleJobSearch = getScheduleJobSearch({
+    selectedCount,
+    areAllRowsSelected: areAllRowsSelected(),
+    selectedHostsSearch: selectedCount > 0 ? fetchBulkParams() : null,
+  });
 
   const selectionToolbar = (
     <ToolbarItem key="selectAll">
@@ -212,7 +231,7 @@ const HostsIndex = () => {
   const refreshTableData = () =>
     setAPIOptions({
       ...apiOptions,
-      params: { search: urlSearchQuery },
+      params: { ...params, search: urlSearchQuery, page: 1 },
     });
   const deleteHostHandler = ({ hostName, computeId }) =>
     dispatch(
@@ -225,6 +244,8 @@ const HostsIndex = () => {
     dispatch(
       bulkDeleteHosts({
         bulkParams,
+        organizationId: currentOrganization?.id,
+        locationId: currentLocation?.id,
         selectedCount,
         destroyVmOnHostDelete,
         onDeleteSuccess: () => {
@@ -448,7 +469,7 @@ const HostsIndex = () => {
           <SplitItem>
             <Slot
               id="_all-hosts-schedule-a-job"
-              hostSearch={selectedCount ? fetchBulkParams() : null}
+              hostSearch={scheduleJobSearch}
               hostResponse={response}
               selectedCount={selectedCount}
             />
@@ -574,6 +595,9 @@ const HostsIndex = () => {
             selectedCount,
             selectedResults,
             fetchBulkParams,
+            organizationId: currentOrganization?.id,
+            locationId: currentLocation?.id,
+            refreshTableData,
           }}
         >
           <BulkAssignOrganizationModal
@@ -615,13 +639,6 @@ const HostsIndex = () => {
             key="bulk-manage-notifications-modal"
             isOpen={notificationsModalOpen}
             closeModal={() => setNotificationsModalOpen(false)}
-            // Re-fetch hosts with the current search so the table stays in sync
-            onSuccess={() =>
-              setAPIOptions({
-                ...apiOptions,
-                params: { search: urlSearchQuery },
-              })
-            }
           />
           <Slot id="_all-hosts-modals" multi />
         </ForemanActionsBarContext.Provider>

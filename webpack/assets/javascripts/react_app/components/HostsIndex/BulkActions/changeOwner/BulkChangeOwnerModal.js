@@ -23,18 +23,12 @@ import {
   USER_KEY,
   USERGROUP_KEY,
 } from './actions';
-import { foremanUrl } from '../../../../common/helpers';
-import { APIActions } from '../../../../redux/API';
 import { STATUS } from '../../../../constants';
 import {
   selectAPIStatus,
   selectAPIResponse,
 } from '../../../../redux/API/APISelectors';
-import {
-  HOSTS_API_PATH,
-  API_REQUEST_KEY,
-} from '../../../../routes/Hosts/constants';
-import { failedHostsToastParams } from '../helpers';
+import { buildBulkRequestBody, bulkErrorToastParams } from '../helpers';
 
 const BulkChangeOwnerModal = ({
   isOpen,
@@ -42,6 +36,9 @@ const BulkChangeOwnerModal = ({
   selectAllHostsMode,
   selectedCount,
   fetchBulkParams,
+  organizationId,
+  locationId,
+  onSuccess: onSuccessCallback,
 }) => {
   const dispatch = useDispatch();
   const [ownerId, setOwnerId] = useState('');
@@ -89,6 +86,7 @@ const BulkChangeOwnerModal = ({
   const toggle = toggleRef => (
     <MenuToggle
       ref={toggleRef}
+      ouiaId="bulk-change-owner-toggle"
       onClick={onToggleClick}
       isExpanded={ownerSelectOpen}
       style={{ width: '500px' }}
@@ -102,16 +100,9 @@ const BulkChangeOwnerModal = ({
     closeModal();
   };
 
-  const handleError = response => {
+  const handleError = error => {
     handleModalClose();
-    dispatch(
-      addToast(
-        failedHostsToastParams({
-          ...response.data.error,
-          key: BULK_CHANGE_OWNER_KEY,
-        })
-      )
-    );
+    dispatch(addToast(bulkErrorToastParams(error, BULK_CHANGE_OWNER_KEY)));
   };
 
   const handleSuccess = response => {
@@ -121,22 +112,17 @@ const BulkChangeOwnerModal = ({
         message: response.data.message,
       })
     );
-    dispatch(
-      APIActions.get({
-        key: API_REQUEST_KEY,
-        url: foremanUrl(HOSTS_API_PATH),
-      })
-    );
+    if (onSuccessCallback) onSuccessCallback();
     handleModalClose();
   };
 
   const handleConfirm = () => {
-    const requestBody = {
-      included: {
-        search: fetchBulkParams(),
-      },
+    const requestBody = buildBulkRequestBody({
+      fetchBulkParams,
+      organizationId,
+      locationId,
       owner_id: ownerId,
-    };
+    });
 
     dispatch(bulkChangeOwner(requestBody, handleSuccess, handleError));
   };
@@ -250,11 +236,17 @@ BulkChangeOwnerModal.propTypes = {
   fetchBulkParams: PropTypes.func.isRequired,
   selectedCount: PropTypes.number.isRequired,
   selectAllHostsMode: PropTypes.bool.isRequired,
+  organizationId: PropTypes.number,
+  locationId: PropTypes.number,
+  onSuccess: PropTypes.func,
 };
 
 BulkChangeOwnerModal.defaultProps = {
   isOpen: false,
   closeModal: () => {},
+  organizationId: undefined,
+  locationId: undefined,
+  onSuccess: undefined,
 };
 
 export default BulkChangeOwnerModal;

@@ -33,7 +33,7 @@ RUN \
   dnf install -y redhat-rpm-config git-core \
     gcc-c++ make bzip2 gettext tar \
     libxml2-devel libffi-devel libcurl-devel ruby-devel \
-    postgresql-devel && \
+    postgresql-devel libcap-devel && \
   dnf clean all
 
 ENV DATABASE_URL=nulldb://nohost
@@ -55,7 +55,7 @@ RUN bundle install && \
 RUN \
   make -C locale all-mo && \
   mv -v db/schema.rb.nulldb db/schema.rb && \
-  bundle exec rake assets:clean assets:precompile
+  bin/rake assets:clean assets:precompile
 
 RUN npm install --no-audit --no-optional && \
   ./node_modules/webpack/bin/webpack.js --config config/webpack.config.js && \

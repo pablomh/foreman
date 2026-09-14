@@ -1,6 +1,0 @@
-# foreman_url=http://foreman.example.com/unattended/provision
-DEFAULT freebsd
-
-LABEL freebsd
-    KERNEL memdisk
-    APPEND initrd=boot/centos-mirror-nrm0GtSX1ZC5-initrd.img harddisk raw
