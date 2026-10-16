@@ -20,7 +20,6 @@ module Api
 
       def index
         @hostgroups = resource_scope_for_index
-
         if params[:include].present?
           @parameters = params[:include].include?('parameters')
         end
@@ -115,7 +114,7 @@ module Api
           render_message _("Configuration successfully rebuilt."), :status => :ok
         else
           render_error :custom_error, :status => :unprocessable_entity,
-                       :locals => { :message => _("Configuration rebuild failed for: %s." % failures.to_sentence) }
+            :locals => { :message => _("Configuration rebuild failed for: %s." % failures.to_sentence) }
         end
       end
 
@@ -123,6 +122,13 @@ module Api
 
       def include_parameters_in_response
         @parameters = true
+      end
+
+      # Lazy so every action that renders the resource has it without per-action wiring.
+      helper_method :hostgroup_presenter
+
+      def hostgroup_presenter
+        @hostgroup_presenter ||= HostgroupInheritancePresenter.load(@hostgroups || @hostgroup, include_parameters: @parameters)
       end
 
       def action_permission

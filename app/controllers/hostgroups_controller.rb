@@ -13,10 +13,14 @@ class HostgroupsController < ApplicationController
     respond_to do |format|
       format.html do
         @hostgroups = resource_base_search_and_page
+        @hostgroup_counts = HostgroupCountsPresenter.load(@hostgroups)
         render :index
       end
       format.csv do
-        csv_response(resource_base_with_search)
+        hostgroups = resource_base_with_search
+        # Unpaginated: don't scope the subtree-count query to the streamed set.
+        counts = HostgroupCountsPresenter.load(hostgroups, scope_to_given: false)
+        csv_response(hostgroups, csv_columns(counts))
       end
     end
   end
@@ -93,8 +97,12 @@ class HostgroupsController < ApplicationController
     render :partial => "form"
   end
 
-  def csv_columns
-    [:title, :hosts_count, :children_hosts_count]
+  def csv_columns(counts)
+    [
+      :title,
+      CsvExporter::ExportDefinition.new(:hosts_count, callback: ->(hostgroup) { counts.direct_host_count_for(hostgroup) }),
+      CsvExporter::ExportDefinition.new(:children_hosts_count, callback: ->(hostgroup) { counts.subtree_host_count_for(hostgroup) }),
+    ]
   end
 
   private
