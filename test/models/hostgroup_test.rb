@@ -10,7 +10,7 @@ def valid_hostgroup_name_list
     RFauxFactory.gen_alpha(1),
     RFauxFactory.gen_alpha(245),
     *RFauxFactory.gen_strings(1..245, exclude: [:html, :punctuation]).values,
-    RFauxFactory.gen_html(rand((1..220))),
+    RFauxFactory.gen_html(rand(1..220)),
   ]
 end
 
@@ -89,8 +89,8 @@ class HostgroupTest < ActiveSupport::TestCase
 
     as_admin do
       top = FactoryBot.create(:hostgroup, :name => "topA",
-                               :group_parameters_attributes => { pid += 1 => {"name" => "topA", "value" => "1"},
-                                                                 pid += 1 => {"name" => "topB", "value" => "1"}})
+        :group_parameters_attributes => { pid += 1 => {"name" => "topA", "value" => "1"},
+                                          pid += 1 => {"name" => "topB", "value" => "1"}})
       child = Hostgroup.create!(:name => "secondB", :parent_id => top.id)
     end
 
@@ -182,6 +182,24 @@ class HostgroupTest < ActiveSupport::TestCase
     end
   end
 
+  test "reuses one ancestor query for repeated inherited id lookups" do
+    child = hostgroups(:inherited)
+    assert_sql_queries(1) do
+      child.inherited_domain_id
+      child.inherited_architecture_id
+      child.inherited_operatingsystem_id
+    end
+  end
+
+  test "inherited lookups reflect in-memory updates on the same hostgroup instance" do
+    child = hostgroups(:inherited)
+    assert_equal hostgroups(:parent).domain_id, child.inherited_domain_id
+
+    child.domain_id = domains(:yourdomain).id
+
+    assert_equal domains(:yourdomain).id, child.inherited_domain_id
+  end
+
   test "inherited id value does not inherit parent's field id value if the child's value is not null" do
     child = hostgroups(:inherited)
     parent = hostgroups(:parent)
@@ -204,6 +222,16 @@ class HostgroupTest < ActiveSupport::TestCase
     end
   end
 
+  test "inherited puppet_ca_proxy is looked up unscoped by id, ignoring feature changes" do
+    child = hostgroups(:inherited)
+    proxy = smart_proxies(:puppetmaster)
+    assert_equal proxy, child.puppet_ca_proxy
+
+    smart_proxy_features(:puppetmaster_puppetca).destroy
+
+    assert_equal proxy, child.reload.puppet_ca_proxy
+  end
+
   test "inherited object does not inherit parent object if the child's value is null" do
     child = hostgroups(:inherited)
     parent = hostgroups(:parent)
@@ -211,6 +239,19 @@ class HostgroupTest < ActiveSupport::TestCase
     child.reload
     refute_equal parent.domain, child.domain
     assert_equal domains(:yourdomain), child.domain
+  end
+
+  test "inherited attribute skips nil but not empty string values in ancestry chain" do
+    as_admin do
+      grandparent = FactoryBot.create(:hostgroup, :with_os, :with_domain, pxe_loader: 'Grub2 UEFI')
+      parent = FactoryBot.create(:hostgroup, parent: grandparent, pxe_loader: '')
+      child = FactoryBot.create(:hostgroup, parent: parent, pxe_loader: nil)
+
+      # Inherits parent's '', not grandparent's 'Grub2 UEFI'
+      assert_equal '', child.inherited_pxe_loader
+      # pxe_loader (unlike inherited_pxe_loader) applies .presence, so '' becomes nil
+      assert_nil child.pxe_loader
+    end
   end
 
   test "root_pass inherited from parent if blank" do
@@ -347,6 +388,18 @@ class HostgroupTest < ActiveSupport::TestCase
     nested_group = FactoryBot.create(:hostgroup, :parent => group)
     FactoryBot.create_list(:host, 4, :managed, :hostgroup => nested_group)
     assert_equal(7, group.parent.children_hosts_count)
+  end
+
+  test "children_hosts_count fallback is taxonomy-scoped and extracts its own count" do
+    group = FactoryBot.create(:hostgroup, :with_parent, :with_os, :with_domain)
+    parent = group.parent
+
+    HostgroupSubtreeCounts.expects(:new).with(Hostgroup, target_hostgroups: [parent]).returns(stub(:totals => { parent.id => 7 }))
+    assert_equal 7, parent.children_hosts_count
+  end
+
+  test "children_hosts_count is zero for an unsaved hostgroup" do
+    assert_equal 0, Hostgroup.new.children_hosts_count
   end
 
   test "should not associate proxies without appropriate features" do
