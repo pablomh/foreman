@@ -12,7 +12,8 @@ module Api
       add_scoped_search_description_for(Filter)
 
       def index
-        @filters = resource_scope_for_index
+        @filters = resource_scope_for_index.includes(:permissions, :role => [:locations, :organizations])
+        preload_role_taxonomy_authorization
       end
 
       api :GET, "/filters/:id/", N_("Show a filter")
@@ -60,6 +61,31 @@ module Api
 
       def allowed_nested_id
         %w(role_id)
+      end
+
+      def preload_role_taxonomy_authorization
+        roles = @filters.map(&:role).compact.uniq
+        @preauthorized_role_location_ids = preauthorized_taxonomy_lookup(
+          roles.flat_map(&:location_ids),
+          Location,
+          :view_locations
+        )
+        @preauthorized_role_organization_ids = preauthorized_taxonomy_lookup(
+          roles.flat_map(&:organization_ids),
+          Organization,
+          :view_organizations
+        )
+      end
+
+      def preauthorized_taxonomy_lookup(ids, resource_class, permission)
+        ids = ids.uniq
+        return {} if ids.empty? || !User.current.can?(permission)
+        return ids.index_with(true) if User.current.admin?
+
+        Authorizer.new(User.current, :collection => ids)
+          .find_collection(resource_class, :permission => permission)
+          .pluck(:id)
+          .index_with(true)
       end
     end
   end
