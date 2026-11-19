@@ -1,5 +1,5 @@
 const packageJsonDirectories = ['./'];
-const vendorEntry = require('../../../../config/webpack.vendor');
+const { vendorEntry } = require('../../../../config/webpack.dependencies');
 
 module.exports = {
   plugins: [

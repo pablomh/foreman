@@ -7,7 +7,7 @@ const dotenv = require('dotenv');
 const root = path.resolve(__dirname, '..');
 dotenv.config();
 var StatsWriterPlugin = require('webpack-stats-plugin').StatsWriterPlugin;
-var vendorEntry = require('./webpack.vendor');
+var { vendorEntry, nonEager } = require('./webpack.dependencies');
 var fs = require('fs');
 const { ModuleFederationPlugin } = require('webpack').container;
 var pluginUtils = require('../script/plugin_webpack_directories');
@@ -22,19 +22,11 @@ const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8'));
 const dependencies = packageJson.dependencies || {};
 const devDependencies = packageJson.devDependencies || {};
 const allDependencies = { ...dependencies, ...devDependencies };
-// Must stay eager when anything imported eagerly needs it synchronously.
-const nonEagerShared = new Set([
-  '@novnc/novnc',
-  '@spice-project/spice-html5',
-  'react-password-strength',
-  'ace-builds',
-  'react-ace',
-]);
 const shared = isPlugin => {
   const sharedArr = Object.keys(allDependencies).map(dep => ({
     [dep]: {
       // core loads dependencies eagerly unless they are only needed on demand
-      eager: !isPlugin && !nonEagerShared.has(dep),
+      eager: !isPlugin && !nonEager.includes(dep),
       singleton: true,
       requiredVersion: allDependencies[dep],
       import: isPlugin ? false : dep,

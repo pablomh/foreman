@@ -15,14 +15,17 @@ Foreman manages NPM dependencies directly in `package.json`. Dependencies are sh
 npm install <package-name>
 ```
 
-2. If the package needs to be available to plugins (i.e. shared between core and plugin webpack bundles), add its name to `config/webpack.vendor.js`.
+2. Add the package to `config/webpack.dependencies.js`:
++
+* `vendorEntry`: bundled into the vendor chunk, shared via Module Federation and loaded eagerly.
+* `nonEager`: shared but provided on demand. Use this for heavy libraries that core only loads through `import()`. Nothing imported eagerly (core exports or plugin entries) may import a `nonEager` package synchronously.
 
 3. Run `npm install` if you haven't already.
 
 ### How it works
 
-* `config/webpack.vendor.js` lists packages that are bundled into the vendor chunk and shared via Module Federation.
-* The webpack config (`config/webpack.config.js`) reads all dependencies from `package.json` and declares them as `shared` modules with `singleton: true`. Core loads them eagerly so they are available to plugins.
+* `config/webpack.dependencies.js` is the single classification of NPM dependencies. It fails the build if a listed package is unknown to `package.json` or appears in both lists.
+* The webpack config (`config/webpack.config.js`) reads all dependencies from `package.json` and declares them as `shared` modules with `singleton: true`; `nonEager` packages are the only ones not loaded eagerly into the initial chunks.
 * Plugins import shared dependencies normally (e.g. `import React from 'react'`). Webpack Module Federation resolves them from core's shared scope at runtime.
 
 ### Excluding packages from the build
@@ -33,5 +36,6 @@ After adding or updating a dependency, a corresponding change in https://github.
 
 ### Common pitfalls
 
-* **`Shared module X doesn't exist in shared scope default`** — you added a package to `package.json` but forgot to add it to `config/webpack.vendor.js`.
-* **`Uncaught ReferenceError: __webpack_exports__ is not defined`** — wrong entry point in `config/webpack.vendor.js`. Some packages need a subpath (e.g. `@scalprum/core/index` instead of `@scalprum/core`).
+* **`Shared module X doesn't exist in shared scope default`** — you added a package to `package.json` but forgot to list it in `config/webpack.dependencies.js`.
+* **`Shared module is not available for eager consumption`** — the package is in the `nonEager` list, but core exports or a plugin entry import it synchronously. Move it to `vendorEntry`, or load it with `import()`.
+* **`Uncaught ReferenceError: __webpack_exports__ is not defined`** — wrong entry point in the `vendorEntry` list. Some packages need a subpath (e.g. `@scalprum/core/index` instead of `@scalprum/core`).
