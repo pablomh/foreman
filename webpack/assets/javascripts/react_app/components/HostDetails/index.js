@@ -27,7 +27,7 @@ import {
 } from '../common/Slot/SlotSelectors';
 
 import { selectIsCollapsed } from '../Layout/LayoutSelectors';
-import ActionsBar from './ActionsBar';
+import ActionsBar from './ActionsBar/ActionsBar';
 import { registerCoreTabs } from './Tabs';
 import {
   HOST_DETAILS_API_OPTIONS,

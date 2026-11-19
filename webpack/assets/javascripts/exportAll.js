@@ -4,7 +4,9 @@ const path = require('path');
 // Modules loaded on demand by LazyComponent must not be eagerly exported.
 const lazyLoadedPaths = [
   'components/PasswordStrength',
-  'components/common/charts',
+  'components/common/charts/AreaChart/AreaChartImpl',
+  'components/common/charts/BarChart/BarChartImpl',
+  'components/common/charts/DonutChart/DonutChartImpl',
   'components/Editor',
   'components/HostDetails',
   'components/HostsIndex',
@@ -21,9 +23,15 @@ const lazyLoadedPaths = [
 
 // Paths shipped plugins import synchronously as foremanReact/* externals.
 const eagerExportExceptions = [
+  'components/HostDetails/ActionsBar/index',
+  'components/HostDetails/CardExpansionContext',
   'components/HostDetails/consts',
+  'components/HostDetails/DetailsCard/DefaultLoaderEmptyState',
+  'components/HostDetails/Tabs/ReportsTab/helpers',
+  'components/HostDetails/Tabs/ReportsTab/index',
   'components/HostDetails/Templates/CardItem/CardTemplate/index',
   'components/HostsIndex/index',
+  'components/HostsIndex/BulkActions/helpers',
   'components/HostsIndex/Columns/core',
   'components/HostsIndex/TableRowActions/core',
   'routes/Hosts/constants',

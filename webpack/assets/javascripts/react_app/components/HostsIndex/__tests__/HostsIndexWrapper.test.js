@@ -18,7 +18,7 @@ jest.mock('../../PermissionDenied', () => ({
   ),
 }));
 
-jest.mock('../index', () => ({
+jest.mock('../HostsIndexPage', () => ({
   __esModule: true,
   default: props => (
     <div data-testid="hosts-index" data-props={JSON.stringify(props)}>

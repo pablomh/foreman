@@ -22,11 +22,11 @@ const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8'));
 const dependencies = packageJson.dependencies || {};
 const devDependencies = packageJson.devDependencies || {};
 const allDependencies = { ...dependencies, ...devDependencies };
+// Must stay eager when anything imported eagerly needs it synchronously.
 const nonEagerShared = new Set([
   '@novnc/novnc',
   '@spice-project/spice-html5',
   'react-password-strength',
-  '@patternfly/react-charts',
   'ace-builds',
   'react-ace',
 ]);
@@ -116,7 +116,8 @@ const commonConfig = function(buildName = 'core', tsConfig = 'tsconfig.json') {
     config.devtool = 'source-map';
     config.optimization = {
       moduleIds: 'named',
-      splitChunks: false,
+      // Async only, so the initial payload stays unchanged.
+      splitChunks: { chunks: 'async' },
     };
   } else {
     config.devtool = 'eval-cheap-module-source-map';
