@@ -13,22 +13,22 @@ const mockData = {
 };
 
 describe('ConfigReports', () => {
-  it('should render chart titles', () => {
+  it('should render chart titles', async () => {
     render(<ConfigReports data={mockData} />);
 
-    expect(screen.getByText('Report Metrics')).toBeInTheDocument();
+    expect(await screen.findByText('Report Metrics')).toBeInTheDocument();
     expect(screen.getByText('Report Status')).toBeInTheDocument();
   });
 
-  it('should render metrics table with data and total', () => {
+  it('should render metrics table with data and total', async () => {
     render(<ConfigReports data={mockData} />);
 
-    expect(screen.getByText('config_retrieval')).toBeInTheDocument();
+    expect(await screen.findByText('config_retrieval')).toBeInTheDocument();
     expect(screen.getByText('Total')).toBeInTheDocument();
     expect(screen.getByRole('table')).toBeInTheDocument();
   });
 
-  it('should render multiple metrics rows', () => {
+  it('should render multiple metrics rows', async () => {
     const multiMetricData = {
       ...mockData,
       metricsData: {
@@ -41,7 +41,7 @@ describe('ConfigReports', () => {
     };
     render(<ConfigReports data={multiMetricData} />);
 
-    expect(screen.getByText('config_retrieval')).toBeInTheDocument();
+    expect(await screen.findByText('config_retrieval')).toBeInTheDocument();
     expect(screen.getByText('exec_report')).toBeInTheDocument();
     expect(screen.getByText('15')).toBeInTheDocument();
   });

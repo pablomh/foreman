@@ -1,6 +1,19 @@
 const fs = require('fs');
 const path = require('path');
 
+// Modules loaded on demand by LazyComponent must not be eagerly exported.
+const lazyLoadedPaths = [
+  'components/PasswordStrength',
+  'components/common/charts',
+  'components/Editor',
+];
+
+const isLazyLoaded = relativePath =>
+  lazyLoadedPaths.some(
+    lazyPath =>
+      relativePath === lazyPath || relativePath.startsWith(`${lazyPath}/`)
+  );
+
 function generateExports(directoryPath, exportFileContent = '') {
   fs.readdirSync(directoryPath, { withFileTypes: true }).forEach(dirent => {
     if (
@@ -33,6 +46,9 @@ function generateExports(directoryPath, exportFileContent = '') {
         relativeFilePath = relativeFilePath.substring(
           relativeFilePath.indexOf('react_app') + 'react_app'.length + 1
         );
+        if (isLazyLoaded(relativeFilePath.replace(/\\/g, '/'))) {
+          return;
+        }
         let fileName = relativeFilePath.replace(/\\/g, '/').replace(/\//g, '_'); // replace slashes with underscores
         fileName = fileName.replace(/\./g, ''); // remove dots
 

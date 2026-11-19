@@ -25,6 +25,10 @@ const allDependencies = { ...dependencies, ...devDependencies };
 const nonEagerShared = new Set([
   '@novnc/novnc',
   '@spice-project/spice-html5',
+  'react-password-strength',
+  '@patternfly/react-charts',
+  'ace-builds',
+  'react-ace',
 ]);
 const shared = isPlugin => {
   const sharedArr = Object.keys(allDependencies).map(dep => ({

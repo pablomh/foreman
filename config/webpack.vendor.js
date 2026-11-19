@@ -12,13 +12,11 @@ module.exports = [
   'regenerator-runtime/runtime',
   'formik',
   'react',
-  'react-ace',
   'react-dom',
   'react-dnd',
   'react-dnd-html5-backend',
   'react-diff-view',
   'react-onclickoutside',
-  'react-password-strength',
   'react-router-dom',
   'react-router-bootstrap',
   'react-loading-skeleton',
@@ -43,26 +41,7 @@ module.exports = [
   '@patternfly/react-table',
   '@patternfly/react-tokens',
   '@patternfly/react-styles',
-  '@patternfly/react-charts',
   '@patternfly/react-templates',
-
-  /**
-   * ace-builds related
-   */
-  'ace-builds',
-  'ace-builds/src-noconflict/ace',
-  'ace-builds/src-noconflict/ext-language_tools',
-  'ace-builds/src-noconflict/mode-ruby',
-  'ace-builds/src-noconflict/mode-json',
-  'ace-builds/src-noconflict/mode-sh',
-  'ace-builds/src-noconflict/mode-html_ruby',
-  'ace-builds/src-noconflict/mode-xml',
-  'ace-builds/src-noconflict/mode-yaml',
-  'ace-builds/src-noconflict/theme-github',
-  'ace-builds/src-noconflict/theme-monokai',
-  'ace-builds/src-noconflict/keybinding-vim',
-  'ace-builds/src-noconflict/keybinding-emacs',
-  'ace-builds/src-min-noconflict/ext-searchbox',
 
   /**
    * UUID

@@ -6,6 +6,7 @@ import { Alert, AlertActionCloseButton, Button } from '@patternfly/react-core';
 import { noop } from '../../common/helpers';
 import { translate as __ } from '../../common/I18n';
 import DiffView from '../DiffView/DiffView';
+import './aceSetup';
 import EditorView from './components/EditorView';
 import EditorNavbar from './components/EditorNavbar';
 import EditorModal from './components/EditorModal';
