@@ -6,9 +6,31 @@ const lazyLoadedPaths = [
   'components/PasswordStrength',
   'components/common/charts',
   'components/Editor',
+  'components/HostDetails',
+  'components/HostsIndex',
+  'components/HostStatuses',
+  'routes/Audits',
+  'routes/Models',
+  'routes/Hosts',
+  'routes/HostDetails',
+  'routes/RegistrationCommands',
+  'routes/HostStatuses',
+  'routes/FiltersForm',
+  'routes/Upgrade',
+];
+
+// Paths shipped plugins import synchronously as foremanReact/* externals.
+const eagerExportExceptions = [
+  'components/HostDetails/consts',
+  'components/HostDetails/Templates/CardItem/CardTemplate/index',
+  'components/HostsIndex/index',
+  'components/HostsIndex/Columns/core',
+  'components/HostsIndex/TableRowActions/core',
+  'routes/Hosts/constants',
 ];
 
 const isLazyLoaded = relativePath =>
+  !eagerExportExceptions.includes(relativePath) &&
   lazyLoadedPaths.some(
     lazyPath =>
       relativePath === lazyPath || relativePath.startsWith(`${lazyPath}/`)

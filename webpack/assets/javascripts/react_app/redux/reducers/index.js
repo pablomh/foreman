@@ -10,7 +10,7 @@ import { reducers as diffModalReducers } from '../../components/ConfigReports/Di
 import editorReducer from '../../components/Editor/EditorReducer';
 import { reducers as templateGenerationReducers } from '../../components/TemplateGenerator';
 import { reducers as fillReducers } from '../../components/common/Fill';
-import { reducers as auditsPageReducers } from '../../routes/Audits/AuditsPage';
+import auditsPageReducer from '../../routes/Audits/AuditsPage/reducers';
 import { reducers as intervalReducers } from '../middlewares/IntervalMiddleware';
 import { reducers as bookmarksPF4Reducers } from '../../components/PF4/Bookmarks';
 import { reducers as apiReducer } from '../API';
@@ -39,7 +39,7 @@ export function combineReducersAsync(asyncReducers) {
     router: connectRouter(history),
     // Pages
     ...fillReducers,
-    ...auditsPageReducers,
+    auditsPage: auditsPageReducer,
 
     // Middlewares
     ...intervalReducers,

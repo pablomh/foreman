@@ -15,21 +15,17 @@ export default [
   {
     path: MODELS_PATH,
     render: props => <ModelsPage {...props} />,
-    exact: true,
   },
   {
     path: MODELS_PATH_NEW,
     render: props => <NewModelFormPage {...props} />,
-    exact: true,
   },
   {
     path: MODELS_PATH_EDIT,
     render: props => <EditModelFormPage {...props} />,
-    exact: true,
   },
   {
     path: MODELS_PATH_BY_ID,
-    exact: true,
     render: ({ match, location }) => (
       <Redirect
         to={{

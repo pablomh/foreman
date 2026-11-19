@@ -2,7 +2,6 @@ import { bindActionCreators } from 'redux';
 import { connect } from 'react-redux';
 
 import * as actions from './EditorActions';
-import reducer from './EditorReducer';
 
 import Editor from './Editor';
 
@@ -67,9 +66,6 @@ const mapStateToProps = state => ({
 
 // map action dispatchers to props
 const mapDispatchToProps = dispatch => bindActionCreators(actions, dispatch);
-
-// export reducers
-export const reducers = { editor: reducer };
 
 // export connected component
 export default connect(mapStateToProps, mapDispatchToProps)(Editor);
