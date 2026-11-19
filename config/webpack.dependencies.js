@@ -82,7 +82,7 @@ const vendorEntry = [
   /*
    * for rh_cloud
    * /index is a workaround until we find a better way
-  */
+   */
   'unleash-proxy-client',
   '@unleash/proxy-client-react',
   '@scalprum/core/index',
@@ -101,7 +101,10 @@ const nonEager = [
 
 const packageName = request =>
   request.startsWith('@')
-    ? request.split('/').slice(0, 2).join('/')
+    ? request
+        .split('/')
+        .slice(0, 2)
+        .join('/')
     : request.split('/')[0];
 
 const unique = values => [...new Set(values)];
@@ -122,8 +125,10 @@ const conflicting = unique(
 );
 if (conflicting.length) {
   throw new Error(
-    `packages cannot be both vendor entries and non-eager: ${conflicting.join(', ')}`
+    `packages cannot be both vendor entries and non-eager: ${conflicting.join(
+      ', '
+    )}`
   );
 }
 
-module.exports = { vendorEntry, nonEager };
+module.exports = { vendorEntry, nonEager, packageName, allDependencies };

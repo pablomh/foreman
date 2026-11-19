@@ -1,10 +1,11 @@
 /* eslint-disable */
 
-// Default-deny plugin API: only the paths listed here are exported as
+// Default-deny plugin API: only the modules listed here are exported as
 // foremanReact/*. Everything else under react_app is internal. New pages and
 // applications need no entry; add a path only when it is an extension point.
-// A directory entry exposes every module below it; a file entry exposes one
-// module. Stale entries fail the build.
+// Entries name one module each: list the index file explicitly rather than the
+// directory, so adding a sibling module cannot widen the API by accident.
+// Stale entries fail the build.
 module.exports = [
   // Core services and state
   'API',
@@ -37,7 +38,9 @@ module.exports = [
   'components/ColumnSelector/index',
   'components/ConfirmModal/index',
   'components/Head/index',
+  // lazy defaults kept for out-of-tree consumers; shipped plugins use the named exports
   'components/HostDetails/ActionsBar/index',
+  'components/HostDetails/CardExpansionContext',
   'components/HostDetails/DetailsCard/DefaultLoaderEmptyState',
   'components/HostDetails/Tabs/ReportsTab/helpers',
   'components/HostDetails/Tabs/ReportsTab/index',
@@ -46,6 +49,7 @@ module.exports = [
   'components/HostsIndex/BulkActions/helpers',
   'components/HostsIndex/Columns/core',
   'components/HostsIndex/TableRowActions/core',
+  // lazy default kept for out-of-tree consumers; shipped plugins use the context
   'components/HostsIndex/index',
   'components/Layout/LayoutActions',
   'components/Loading/index',
@@ -78,7 +82,11 @@ module.exports = [
   'components/common/OrderableDualListSelector/OrderableDualListSelector',
   'components/common/SkeletonLoader/index',
   'components/common/Slot/index',
+  // chart shells and helpers, imported by third-party plugins
+  'components/common/charts/AreaChart/AreaChartHelpers',
+  'components/common/charts/AreaChart/AreaChartPropTypes',
   'components/common/charts/AreaChart/index',
+  'components/common/charts/BarChart/BarChartHtmlTooltip',
   'components/common/charts/BarChart/index',
   'components/common/charts/DonutChart/index',
   'components/common/charts/helpers/LegendHelpers',

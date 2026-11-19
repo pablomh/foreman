@@ -1,7 +1,9 @@
-const modules = process.env.NODE_ENV === 'test' ? 'commonjs' : false;
-
-const presets = [
-  [require.resolve('@babel/preset-env'), { modules }],
+// Webpack (babel-loader) supports static ESM; Jest does not.
+const presets = supportsStaticESM => [
+  [
+    require.resolve('@babel/preset-env'),
+    { modules: supportsStaticESM ? false : 'commonjs' },
+  ],
   require.resolve('@babel/preset-react'),
 ];
 

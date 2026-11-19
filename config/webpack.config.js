@@ -7,21 +7,30 @@ const dotenv = require('dotenv');
 const root = path.resolve(__dirname, '..');
 dotenv.config();
 var StatsWriterPlugin = require('webpack-stats-plugin').StatsWriterPlugin;
-var { vendorEntry, nonEager } = require('./webpack.dependencies');
+var {
+  vendorEntry,
+  nonEager,
+  allDependencies,
+} = require('./webpack.dependencies');
+var { exportKeyFor } = require('./plugin_import_key');
 var fs = require('fs');
 const { ModuleFederationPlugin } = require('webpack').container;
 var pluginUtils = require('../script/plugin_webpack_directories');
 var {
   generateExportsFile,
+  exportedKeys,
 } = require('../webpack/assets/javascripts/exportAll');
 var CompressionPlugin = require('compression-webpack-plugin');
 const MiniCssExtractPlugin = require('mini-css-extract-plugin');
+const NonEagerGuard = require('./non_eager_guard');
+const createPluginApiGuard = require('./plugin_api_guard');
 
-const packageJsonPath = path.resolve(root, 'package.json');
-const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8'));
-const dependencies = packageJson.dependencies || {};
-const devDependencies = packageJson.devDependencies || {};
-const allDependencies = { ...dependencies, ...devDependencies };
+var allowedPluginKeys;
+const pluginExportKeys = () => {
+  if (!allowedPluginKeys) allowedPluginKeys = exportedKeys();
+  return allowedPluginKeys;
+};
+
 const shared = isPlugin => {
   const sharedArr = Object.keys(allDependencies).map(dep => ({
     [dep]: {
@@ -107,7 +116,7 @@ const commonConfig = function(buildName = 'core', tsConfig = 'tsconfig.json') {
   if (production) {
     config.devtool = 'source-map';
     config.optimization = {
-      moduleIds: 'named',
+      moduleIds: 'deterministic',
       // Async only, so the initial payload stays unchanged.
       splitChunks: { chunks: 'async' },
     };
@@ -298,6 +307,7 @@ const coreConfig = function() {
       filename: manifestFilename,
     })
   );
+  plugins.push(NonEagerGuard);
   plugins.push(new MiniCssExtractPlugin());
   config.plugins = plugins;
   var rules = config.module.rules;
@@ -339,19 +349,16 @@ const pluginConfig = function(plugin) {
   config.context = path.join(pluginRoot, 'webpack');
   config.entry = {};
 
-  function convertImportStatement(importStatement) {
-    const importPath = importStatement;
-    const importPathParts = importPath.split('/');
-    const newImportName = importPathParts.slice(1).join('_');
-    return newImportName;
-  }
+  const pluginApiGuard = createPluginApiGuard();
+
   config.externals = function({ request }, callback) {
     if (/^foremanReact(\/.*)?$/.test(request)) {
-      const prefix = 'var TheForeman.reactExports.';
-      const newPath =
-        prefix +
-        convertImportStatement(request.substring('foremanReact'.length));
-      return callback(null, newPath);
+      const importPath = request.substring('foremanReact'.length);
+      const key = exportKeyFor(importPath);
+      if (!pluginExportKeys().has(key)) {
+        pluginApiGuard.recordMissingPluginExport(importPath);
+      }
+      return callback(null, `var TheForeman.reactExports.${key}`);
     }
     return callback();
   };
@@ -403,6 +410,7 @@ const pluginConfig = function(plugin) {
       shared: shared(true),
     })
   );
+  plugins.push(pluginApiGuard);
 
   config.plugins = plugins;
   var rules = config.module.rules;

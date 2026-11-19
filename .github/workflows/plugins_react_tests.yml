@@ -7,6 +7,10 @@ on:
       - 'webpack/**'
       - 'package.json'
       - 'config/webpack.config.js'
+      - 'config/webpack.dependencies.js'
+      - 'config/plugin_api.js'
+      - 'config/plugin_import_key.js'
+      - 'script/check_plugin_exports.js'
       - '.github/workflows/plugins_react_tests.yml'
 
 permissions:
@@ -87,7 +91,7 @@ jobs:
         run: npm ci --no-audit --legacy-peer-deps
         working-directory: ${{ github.workspace }}/projects/plugin
       - name: Check ${{ matrix.plugin.name }} foremanReact imports
-        run: node script/check_plugin_exports.js ../plugin/webpack
+        run: npm run check:plugin-exports -- ../plugin/webpack
         working-directory: ${{ github.workspace }}/projects/foreman
       - name: Run ${{ matrix.plugin.name }} tests
         run: npm run test:plugins ${{ matrix.plugin.name }}
