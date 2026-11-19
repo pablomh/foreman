@@ -11,8 +11,10 @@ import {
 
 import { translate as __ } from '../../../common/I18n';
 import EmptyState from '../EmptyState';
-import { foremanUrl } from '../../../common/helpers';
+import { foremanUrl, reloadPage } from '../../../common/helpers';
 import './index.scss';
+
+const CHUNK_LOAD_RETRY_WINDOW_MS = 10000;
 
 class ErrorBoundary extends React.Component {
   constructor(props) {
@@ -30,14 +32,15 @@ class ErrorBoundary extends React.Component {
 
   componentDidCatch(error, info) {
     if (error && error.name === 'ChunkLoadError') {
+      // Rate-limit the reload so a persistently failing chunk cannot loop.
       const key = 'foreman-chunk-load-retry';
       try {
-        if (!sessionStorage.getItem(key)) {
-          sessionStorage.setItem(key, '1');
-          window.location.reload();
+        const lastRetry = Number(sessionStorage.getItem(key)) || 0;
+        if (Date.now() - lastRetry > CHUNK_LOAD_RETRY_WINDOW_MS) {
+          sessionStorage.setItem(key, String(Date.now()));
+          reloadPage();
           return;
         }
-        sessionStorage.removeItem(key);
       } catch (e) {
         // ignore storage failures
       }

@@ -27,7 +27,7 @@ import { UndoIcon } from '@patternfly/react-icons';
 import {
   ForemanHostsIndexActionsBarContext,
   getScheduleJobSearch,
-} from './index';
+} from './context';
 import { Table } from '../PF4/TableIndexPage/Table/Table';
 import { translate as __ } from '../../common/I18n';
 import TableIndexPage from '../PF4/TableIndexPage/TableIndexPage';

@@ -1,24 +1,12 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import PropTypes from 'prop-types';
 import { Spinner } from '@patternfly/react-core';
+import useLazyModule from '../../../common/hooks/useLazyModule';
 
 const LazyComponent = ({ loader, ...props }) => {
-  const [Component, setComponent] = useState(null);
+  const module = useLazyModule(loader);
 
-  useEffect(() => {
-    let active = true;
-    (async () => {
-      const module = await loader();
-      if (active) {
-        setComponent(() => module.default || module);
-      }
-    })();
-    return () => {
-      active = false;
-    };
-  }, [loader]);
-
-  if (!Component) {
+  if (!module) {
     return (
       <div className="lazy-component-loading">
         <Spinner size="lg" aria-label="Loading" />
@@ -26,11 +14,18 @@ const LazyComponent = ({ loader, ...props }) => {
     );
   }
 
+  const Component = module.default || module;
   return <Component {...props} />;
 };
 
 LazyComponent.propTypes = {
   loader: PropTypes.func.isRequired,
+};
+
+export const lazyComponent = (loader, displayName) => {
+  const Component = props => <LazyComponent loader={loader} {...props} />;
+  Component.displayName = displayName || 'LazyComponent';
+  return Component;
 };
 
 export default LazyComponent;

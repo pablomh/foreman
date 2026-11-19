@@ -23,27 +23,23 @@ const lazyRoute = (path, loader, extra = {}) => ({
   ...extra,
 });
 
-const loadAudits = () => import('./Audits');
 const loadModels = () => import('./Models');
-const loadHosts = () => import('./Hosts');
-const loadHostDetails = () => import('./HostDetails');
-const loadRegistrationCommands = () => import('./RegistrationCommands');
-const loadHostStatuses = () => import('./HostStatuses');
 const loadFiltersForm = () => import('./FiltersForm');
-const loadUpgrade = () => import('./Upgrade');
 
 export const routes = [
-  lazyRoute(AUDITS_PATH, loadAudits),
+  lazyRoute(AUDITS_PATH, () => import('./Audits')),
   lazyRoute(MODELS_PATH, loadModels, { exact: true }),
   lazyRoute(MODELS_PATH_NEW, loadModels, { exact: true }),
   lazyRoute(MODELS_PATH_EDIT, loadModels, { exact: true }),
   lazyRoute(MODELS_PATH_BY_ID, loadModels, { exact: true }),
-  lazyRoute(HOSTS_PATH, loadHosts, { exact: true }),
-  lazyRoute(HOST_DETAILS_PATH, loadHostDetails),
-  lazyRoute(REGISTRATION_PATH, loadRegistrationCommands, { exact: true }),
-  lazyRoute(HOST_STATUSES_PATH, loadHostStatuses),
+  lazyRoute(HOSTS_PATH, () => import('./Hosts'), { exact: true }),
+  lazyRoute(HOST_DETAILS_PATH, () => import('./HostDetails')),
+  lazyRoute(REGISTRATION_PATH, () => import('./RegistrationCommands'), {
+    exact: true,
+  }),
+  lazyRoute(HOST_STATUSES_PATH, () => import('./HostStatuses')),
   EmptyPage,
   lazyRoute(FILTERS_PATH_NEW, loadFiltersForm, { exact: true }),
   lazyRoute(FILTERS_PATH_EDIT, loadFiltersForm, { exact: true }),
-  lazyRoute(UPGRADE_PATH, loadUpgrade, { exact: true }),
+  lazyRoute(UPGRADE_PATH, () => import('./Upgrade'), { exact: true }),
 ];

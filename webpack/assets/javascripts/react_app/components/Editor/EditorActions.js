@@ -49,7 +49,6 @@ export const initializeEditor = initializeData => dispatch => {
     isRendering,
     previewResult,
     showError,
-    dslCache,
   } = initializeData;
 
   const initialState = {};
@@ -72,10 +71,6 @@ export const initializeEditor = initializeData => dispatch => {
     type: EDITOR_INITIALIZE,
     payload: initialState,
   });
-  (async () => {
-    const { parseDocs } = await import('./EditorHelpers');
-    parseDocs(dslCache);
-  })();
 };
 
 export const importFile = e => dispatch => {

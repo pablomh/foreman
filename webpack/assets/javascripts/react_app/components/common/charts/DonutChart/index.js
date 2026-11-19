@@ -1,8 +1,3 @@
-import React from 'react';
-import LazyComponent from '../../LazyComponent';
+import { lazyComponent } from '../../LazyComponent';
 
-const loader = () => import('./DonutChartImpl');
-
-const DonutChart = props => <LazyComponent loader={loader} {...props} />;
-
-export default DonutChart;
+export default lazyComponent(() => import('./DonutChartImpl'), 'DonutChart');

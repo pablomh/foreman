@@ -16,18 +16,41 @@ const exportMatches = [
 ];
 exportMatches.forEach(match => exportedNames.add(match[1]));
 
+// Mirrors the foremanReact externals mapping in config/webpack.config.js.
+const keyFromRequest = request => {
+  let key = request
+    .replace(/^\//, '')
+    .replace(/\//g, '_')
+    .replace(/\./g, '');
+  if (key.endsWith('_index')) key = key.slice(0, -'_index'.length);
+  return key;
+};
+
+const isTestPath = filePath =>
+  /(?:^|\/)(?:__tests__|__mocks__|test-utils)\//.test(filePath) ||
+  /\.(?:test|spec)\.js$/.test(filePath);
+
 const collectUsed = (directory, used) => {
   fs.readdirSync(directory, { withFileTypes: true }).forEach(entry => {
     const entryPath = path.join(directory, entry.name);
     if (entry.isDirectory()) {
       collectUsed(entryPath, used);
-    } else if (entry.name.endsWith('.js')) {
+    } else if (entry.name.endsWith('.js') && !isTestPath(entryPath)) {
       const content = fs.readFileSync(entryPath, 'utf8');
-      const pattern = /reactExports\.([A-Za-z0-9_]+)/g;
-      let match = pattern.exec(content);
+      const record = (name, origin) => {
+        if (!used.has(name)) used.set(name, origin);
+      };
+      const sourcePattern = /(?:from\s+|require\()\s*['"]foremanReact(\/[^'"]*)?['"]/g;
+      let match = sourcePattern.exec(content);
       while (match) {
-        if (!used.has(match[1])) used.set(match[1], entryPath);
-        match = pattern.exec(content);
+        record(keyFromRequest(match[1] || ''), entryPath);
+        match = sourcePattern.exec(content);
+      }
+      const builtPattern = /reactExports\.([A-Za-z0-9_]+)/g;
+      match = builtPattern.exec(content);
+      while (match) {
+        record(match[1], entryPath);
+        match = builtPattern.exec(content);
       }
     }
   });
@@ -36,7 +59,7 @@ const collectUsed = (directory, used) => {
 const directories = process.argv.slice(2);
 if (!directories.length) {
   console.error(
-    'Usage: node script/check_plugin_exports.js <built-plugin-dir> [...]'
+    'Usage: node script/check_plugin_exports.js <plugin-dir> [...]'
   );
   process.exit(2);
 }

@@ -1,6 +1,7 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import PropTypes from 'prop-types';
 import LoadingPage from './common/LoadingPage';
+import useLazyModule from '../common/hooks/useLazyModule';
 
 const findRoute = (module, path) => {
   const exported = module.default || module;
@@ -11,25 +12,16 @@ const findRoute = (module, path) => {
 };
 
 const LazyRouteModule = ({ loader, path, routeProps }) => {
-  const [route, setRoute] = useState(null);
+  const module = useLazyModule(loader);
 
-  useEffect(() => {
-    let active = true;
-    (async () => {
-      const module = await loader();
-      if (active) {
-        setRoute(findRoute(module, path));
-      }
-    })();
-    return () => {
-      active = false;
-    };
-  }, [loader, path]);
-
-  if (!route) {
+  if (!module) {
     return <LoadingPage />;
   }
 
+  const route = findRoute(module, path);
+  if (!route || typeof route.render !== 'function') {
+    throw new Error(`No lazy route is defined for ${path}`);
+  }
   return route.render(routeProps);
 };
 

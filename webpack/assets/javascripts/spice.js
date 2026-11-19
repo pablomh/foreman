@@ -11,13 +11,22 @@ let spiceModule;
 
 const loadSpice = () => {
   if (!spiceModule) {
-    spiceModule = import('@spice-project/spice-html5');
+    spiceModule = import('@spice-project/spice-html5').catch(error => {
+      spiceModule = undefined;
+      throw error;
+    });
   }
   return spiceModule;
 };
 
 export async function startSpice() {
-  const { SpiceMainConn } = await loadSpice();
+  let SpiceMainConn;
+  try {
+    ({ SpiceMainConn } = await loadSpice());
+  } catch (e) {
+    spiceError(e);
+    return;
+  }
   const scheme = $('#spice-area').data('encrypt') ? 'wss' : 'ws';
   const host = window.location.hostname;
   const port = $('#spice-area').data('port');
@@ -67,8 +76,12 @@ function spiceSuccess(m) {
 }
 
 export async function sendCtrlAltDel() {
-  const { sendCtrlAltDel: send } = await loadSpice();
-  window.sc = sc;
-  send();
-  window.sc = undefined;
+  try {
+    const { sendCtrlAltDel: send } = await loadSpice();
+    window.sc = sc;
+    send();
+    window.sc = undefined;
+  } catch (e) {
+    spiceError(e);
+  }
 }

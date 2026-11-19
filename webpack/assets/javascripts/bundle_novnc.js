@@ -66,7 +66,13 @@ $(document).on('ContentLoad', async () => {
   const vncScreen = $('#noVNC_screen');
 
   if (vncScreen.length) {
-    const { default: RFB } = await import('@novnc/novnc/core/rfb');
+    let RFB;
+    try {
+      ({ default: RFB } = await import('@novnc/novnc/core/rfb'));
+    } catch (e) {
+      showStatus('fatal', __('Failed to load the console'));
+      return;
+    }
     $('#sendCtrlAltDelButton').on('click', sendCtrlAltDel);
     const protocol = $('#vnc').data('encrypt') ? 'wss' : 'ws';
     const host = $('#vnc').attr('data-host') || window.location.hostname;

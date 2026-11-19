@@ -8,6 +8,7 @@ import { translate as __ } from '../../common/I18n';
 import DiffView from '../DiffView/DiffView';
 import './aceSetup';
 import EditorView from './components/EditorView';
+import { parseDocs } from './EditorHelpers';
 import EditorNavbar from './components/EditorNavbar';
 import EditorModal from './components/EditorModal';
 import {
@@ -87,8 +88,8 @@ const Editor = ({
       showError,
       template,
       type,
-      dslCache,
     });
+    parseDocs(dslCache);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
