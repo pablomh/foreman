@@ -29,6 +29,19 @@ class ErrorBoundary extends React.Component {
   }
 
   componentDidCatch(error, info) {
+    if (error && error.name === 'ChunkLoadError') {
+      const key = 'foreman-chunk-load-retry';
+      try {
+        if (!sessionStorage.getItem(key)) {
+          sessionStorage.setItem(key, '1');
+          window.location.reload();
+          return;
+        }
+        sessionStorage.removeItem(key);
+      } catch (e) {
+        // ignore storage failures
+      }
+    }
     this.setState({ hasError: true, error, info });
   }
 

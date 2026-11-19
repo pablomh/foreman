@@ -32,10 +32,8 @@ import './foreman_overrides';
 import './bundle_novnc';
 
 // Set the public path for dynamic imports
-if (process.env.NODE_ENV !== 'production') {
-  /* eslint-disable-next-line */
-  __webpack_public_path__ = `${window.location.protocol}//${window.location.hostname}:3808/webpack/`;
-}
+/* eslint-disable-next-line */
+__webpack_public_path__ = `${window.URL_PREFIX || ''}/webpack/`;
 
 window.tfm = Object.assign(window.tfm || {}, {
   authSource,

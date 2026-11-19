@@ -90,7 +90,6 @@ module.exports = [
   'yup',
   'select2',
   'multiselect',
-  '@novnc/novnc/core/rfb',
   'sanitize-html',
 
   /*

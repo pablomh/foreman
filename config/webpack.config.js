@@ -22,10 +22,15 @@ const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8'));
 const dependencies = packageJson.dependencies || {};
 const devDependencies = packageJson.devDependencies || {};
 const allDependencies = { ...dependencies, ...devDependencies };
+const nonEagerShared = new Set([
+  '@novnc/novnc',
+  '@spice-project/spice-html5',
+]);
 const shared = isPlugin => {
   const sharedArr = Object.keys(allDependencies).map(dep => ({
     [dep]: {
-      eager: !isPlugin, // core should load all dependencies eagerly so they will be available for plugins
+      // core loads dependencies eagerly unless they are only needed on demand
+      eager: !isPlugin && !nonEagerShared.has(dep),
       singleton: true,
       requiredVersion: allDependencies[dep],
       import: isPlugin ? false : dep,
@@ -280,6 +285,7 @@ const coreConfig = function() {
       type: 'var',
     },
     filename: chunkFilename,
+    chunkFilename,
   };
   var plugins = config.plugins;
 

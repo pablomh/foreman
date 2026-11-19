@@ -1,7 +1,6 @@
 /* eslint-disable jquery/no-data */
 /* eslint-disable jquery/no-attr */
 
-import RFB from '@novnc/novnc/core/rfb';
 import $ from 'jquery';
 import { sprintf, translate as __ } from './react_app/common/I18n';
 
@@ -63,10 +62,11 @@ function onClose(e) {
     );
   }
 }
-$(document).on('ContentLoad', () => {
+$(document).on('ContentLoad', async () => {
   const vncScreen = $('#noVNC_screen');
 
   if (vncScreen.length) {
+    const { default: RFB } = await import('@novnc/novnc/core/rfb');
     $('#sendCtrlAltDelButton').on('click', sendCtrlAltDel);
     const protocol = $('#vnc').data('encrypt') ? 'wss' : 'ws';
     const host = $('#vnc').attr('data-host') || window.location.hostname;

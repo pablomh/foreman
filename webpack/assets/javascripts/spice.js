@@ -4,15 +4,20 @@
 /* eslint-disable jquery/no-text */
 
 import $ from 'jquery';
-import {
-  SpiceMainConn,
-  sendCtrlAltDel as _sendCtrlAltDel,
-} from '@spice-project/spice-html5';
 import { sprintf, translate as __ } from './react_app/common/I18n';
 
 let sc = null;
+let spiceModule;
 
-export function startSpice() {
+const loadSpice = () => {
+  if (!spiceModule) {
+    spiceModule = import('@spice-project/spice-html5');
+  }
+  return spiceModule;
+};
+
+export async function startSpice() {
+  const { SpiceMainConn } = await loadSpice();
   const scheme = $('#spice-area').data('encrypt') ? 'wss' : 'ws';
   const host = window.location.hostname;
   const port = $('#spice-area').data('port');
@@ -61,8 +66,9 @@ function spiceSuccess(m) {
   $('#spice-status').addClass('label-success');
 }
 
-export function sendCtrlAltDel() {
+export async function sendCtrlAltDel() {
+  const { sendCtrlAltDel: send } = await loadSpice();
   window.sc = sc;
-  _sendCtrlAltDel();
+  send();
   window.sc = undefined;
 }
