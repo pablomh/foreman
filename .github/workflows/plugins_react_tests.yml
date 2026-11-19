@@ -86,6 +86,9 @@ jobs:
       - name: Install ${{ matrix.plugin.name }} npm dependencies
         run: npm ci --no-audit --legacy-peer-deps
         working-directory: ${{ github.workspace }}/projects/plugin
+      - name: Check ${{ matrix.plugin.name }} foremanReact imports
+        run: node script/check_plugin_exports.js ../plugin/webpack
+        working-directory: ${{ github.workspace }}/projects/foreman
       - name: Run ${{ matrix.plugin.name }} tests
         run: npm run test:plugins ${{ matrix.plugin.name }}
         working-directory: ${{ github.workspace }}/projects/foreman

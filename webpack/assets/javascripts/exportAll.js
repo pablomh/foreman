@@ -44,6 +44,17 @@ const isLazyLoaded = relativePath =>
       relativePath === lazyPath || relativePath.startsWith(`${lazyPath}/`)
   );
 
+const exportNameFor = relativeFilePath => {
+  let name = relativeFilePath.replace(/\\/g, '/').replace(/\//g, '_');
+  name = name.replace(/\./g, '');
+
+  if (name.endsWith('_index')) {
+    name = name.substring(0, name.length - '_index'.length);
+  }
+
+  return name;
+};
+
 function generateExports(directoryPath, exportFileContent = '') {
   fs.readdirSync(directoryPath, { withFileTypes: true }).forEach(dirent => {
     if (
@@ -79,12 +90,7 @@ function generateExports(directoryPath, exportFileContent = '') {
         if (isLazyLoaded(relativeFilePath.replace(/\\/g, '/'))) {
           return;
         }
-        let fileName = relativeFilePath.replace(/\\/g, '/').replace(/\//g, '_'); // replace slashes with underscores
-        fileName = fileName.replace(/\./g, ''); // remove dots
-
-        if (fileName.endsWith('_index')) {
-          fileName = fileName.substring(0, fileName.length - '_index'.length); // remove _index
-        }
+        const fileName = exportNameFor(relativeFilePath);
 
         exportFileContent += `import * as ${fileName} from './react_app/${relativeFilePath.replace(
           /\\/g,
@@ -108,4 +114,4 @@ const generateExportsFile = () => {
   );
 };
 
-module.exports = { generateExportsFile };
+module.exports = { generateExportsFile, exportNameFor };
