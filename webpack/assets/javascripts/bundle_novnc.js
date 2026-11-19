@@ -3,8 +3,10 @@
 
 import $ from 'jquery';
 import { sprintf, translate as __ } from './react_app/common/I18n';
+import { loadModule } from './react_app/common/lazyModule';
 
 let rfb;
+const loadRfb = () => import('@novnc/novnc/core/rfb');
 const StatusLevelLookup = {
   failed: 'danger',
   fatal: 'danger',
@@ -68,7 +70,7 @@ $(document).on('ContentLoad', async () => {
   if (vncScreen.length) {
     let RFB;
     try {
-      ({ default: RFB } = await import('@novnc/novnc/core/rfb'));
+      ({ default: RFB } = await loadModule(loadRfb));
     } catch (e) {
       showStatus('fatal', __('Failed to load the console'));
       return;

@@ -1,7 +1,7 @@
 import React from 'react';
 import PropTypes from 'prop-types';
 import LoadingPage from './common/LoadingPage';
-import useLazyModule from '../common/hooks/useLazyModule';
+import LazyModule from '../components/common/LazyComponent/LazyModule';
 
 const findRoute = (module, path) => {
   const exported = module.default || module;
@@ -11,19 +11,17 @@ const findRoute = (module, path) => {
   return exported;
 };
 
-const LazyRouteModule = ({ loader, path, routeProps }) => {
-  const module = useLazyModule(loader);
-
-  if (!module) {
-    return <LoadingPage />;
-  }
-
-  const route = findRoute(module, path);
-  if (!route || typeof route.render !== 'function') {
-    throw new Error(`No lazy route is defined for ${path}`);
-  }
-  return route.render(routeProps);
-};
+const LazyRouteModule = ({ loader, path, routeProps }) => (
+  <LazyModule loader={loader} fallback={<LoadingPage />}>
+    {module => {
+      const route = findRoute(module, path);
+      if (!route || typeof route.render !== 'function') {
+        throw new Error(`No lazy route is defined for ${path}`);
+      }
+      return route.render(routeProps);
+    }}
+  </LazyModule>
+);
 
 LazyRouteModule.propTypes = {
   loader: PropTypes.func.isRequired,

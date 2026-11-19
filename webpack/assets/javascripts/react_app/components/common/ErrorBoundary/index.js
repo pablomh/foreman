@@ -46,7 +46,7 @@ class ErrorBoundary extends React.Component {
     const { hasError, error, info } = this.state;
 
     if (!hasError) return children;
-    if (fallback) return fallback();
+    if (fallback) return fallback({ error, info });
 
     const description = (
       <>
@@ -73,10 +73,9 @@ class ErrorBoundary extends React.Component {
       </>
     );
 
-    const action = {
-      title: __('Return to last page'),
-      onClick: history.goBack,
-    };
+    const action = history
+      ? { title: __('Return to last page'), onClick: history.goBack }
+      : undefined;
 
     return (
       <Grid className="error-boundary-foreman-app">

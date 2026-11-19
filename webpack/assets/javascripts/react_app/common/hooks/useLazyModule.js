@@ -1,38 +1,20 @@
 import { useEffect, useState } from 'react';
-
-const pending = new Map();
-const resolved = new Map();
-
-export const loadModule = loader => {
-  if (resolved.has(loader)) return Promise.resolve(resolved.get(loader));
-  if (!pending.has(loader)) {
-    pending.set(
-      loader,
-      (async () => {
-        try {
-          const module = await loader();
-          resolved.set(loader, module);
-          return module;
-        } finally {
-          pending.delete(loader);
-        }
-      })()
-    );
-  }
-  return pending.get(loader);
-};
+import { cachedModule, loadModule } from '../lazyModule';
 
 const useLazyModule = loader => {
-  const [module, setModule] = useState(() => resolved.get(loader));
+  const [loaded, setLoaded] = useState(() => ({
+    loader,
+    ...cachedModule(loader),
+  }));
   const [failure, setFailure] = useState(null);
 
   useEffect(() => {
-    if (module) return undefined;
+    if (loaded.loader === loader && loaded.settled) return undefined;
     let active = true;
     (async () => {
       try {
-        const loaded = await loadModule(loader);
-        if (active) setModule(loaded);
+        const module = await loadModule(loader);
+        if (active) setLoaded({ loader, module, settled: true });
       } catch (error) {
         if (active) setFailure({ loader, error });
       }
@@ -40,11 +22,11 @@ const useLazyModule = loader => {
     return () => {
       active = false;
     };
-  }, [loader, module]);
+  }, [loader, loaded]);
 
   if (failure && failure.loader === loader) throw failure.error;
 
-  return module;
+  return loaded.loader === loader ? loaded.module : undefined;
 };
 
 export default useLazyModule;

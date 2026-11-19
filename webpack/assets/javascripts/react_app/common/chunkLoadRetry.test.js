@@ -1,28 +1,23 @@
-import {
-  CHUNK_LOAD_RETRY_WINDOW_MS,
-  shouldReloadForChunkError,
-} from './chunkLoadRetry';
-
-const NOW = 1_700_000_000_000;
+import { MAX_CHUNK_RELOADS, shouldReloadForChunkError } from './chunkLoadRetry';
+import { loadModule } from './lazyModule';
 
 describe('shouldReloadForChunkError', () => {
   beforeEach(() => sessionStorage.clear());
 
-  it('reloads on the first chunk error', () => {
-    expect(shouldReloadForChunkError(NOW)).toBe(true);
+  it('reloads until the attempt limit and then shows the error UI', () => {
+    for (let attempt = 1; attempt <= MAX_CHUNK_RELOADS; attempt += 1) {
+      expect(shouldReloadForChunkError()).toBe(true);
+    }
+    expect(shouldReloadForChunkError()).toBe(false);
   });
 
-  it('does not reload again inside the window', () => {
-    shouldReloadForChunkError(NOW);
-    expect(
-      shouldReloadForChunkError(NOW + CHUNK_LOAD_RETRY_WINDOW_MS - 1)
-    ).toBe(false);
-  });
+  it('does not refill the budget when another chunk loads', async () => {
+    for (let attempt = 1; attempt <= MAX_CHUNK_RELOADS; attempt += 1) {
+      expect(shouldReloadForChunkError()).toBe(true);
+    }
 
-  it('reloads again after the window', () => {
-    shouldReloadForChunkError(NOW);
-    expect(
-      shouldReloadForChunkError(NOW + CHUNK_LOAD_RETRY_WINDOW_MS + 1)
-    ).toBe(true);
+    await loadModule(jest.fn().mockResolvedValue({ default: 'healthy' }));
+
+    expect(shouldReloadForChunkError()).toBe(false);
   });
 });
