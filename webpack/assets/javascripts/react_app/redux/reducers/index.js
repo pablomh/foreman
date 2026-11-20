@@ -3,14 +3,14 @@ import { connectRouter } from 'connected-react-router';
 import history from '../../history';
 import hosts from './hosts';
 import notifications from './notifications';
-import { reducers as passwordStrengthReducers } from '../../components/PasswordStrength';
+import passwordStrengthReducer from '../../components/PasswordStrength/PasswordStrengthReducer';
 import { reducers as breadcrumbBarReducers } from '../../components/BreadcrumbBar';
 import { reducers as layoutReducers } from '../../components/Layout';
 import { reducers as diffModalReducers } from '../../components/ConfigReports/DiffModal';
-import { reducers as editorReducers } from '../../components/Editor';
+import editorReducer from '../../components/Editor/EditorReducer';
 import { reducers as templateGenerationReducers } from '../../components/TemplateGenerator';
 import { reducers as fillReducers } from '../../components/common/Fill';
-import { reducers as auditsPageReducers } from '../../routes/Audits/AuditsPage';
+import auditsPageReducer from '../../routes/Audits/AuditsPage/reducers';
 import { reducers as intervalReducers } from '../middlewares/IntervalMiddleware';
 import { reducers as bookmarksPF4Reducers } from '../../components/PF4/Bookmarks';
 import { reducers as apiReducer } from '../API';
@@ -25,12 +25,12 @@ export function combineReducersAsync(asyncReducers) {
     hosts,
     notifications,
     ...toastsListReducers,
-    ...passwordStrengthReducers,
+    passwordStrength: passwordStrengthReducer,
     ...breadcrumbBarReducers,
     ...layoutReducers,
     ...asyncReducers,
     ...diffModalReducers,
-    ...editorReducers,
+    editor: editorReducer,
     ...templateGenerationReducers,
     ...settingRecordsReducers,
     ...personalAccessTokensReducers,
@@ -39,7 +39,7 @@ export function combineReducersAsync(asyncReducers) {
     router: connectRouter(history),
     // Pages
     ...fillReducers,
-    ...auditsPageReducers,
+    auditsPage: auditsPageReducer,
 
     // Middlewares
     ...intervalReducers,

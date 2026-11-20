@@ -28,11 +28,11 @@ describe('Routes', () => {
     visit.mockClear();
   });
 
-  it('renders children alongside the matched route', () => {
+  it('renders children alongside the matched route', async () => {
     renderAppSwitcher('/upgrade', <p>Router extra content</p>);
 
     expect(
-      screen.getByRole('heading', { name: 'Foreman upgrade' })
+      await screen.findByRole('heading', { name: 'Foreman upgrade' })
     ).toBeInTheDocument();
     expect(screen.getByText('Router extra content')).toBeInTheDocument();
   });
@@ -45,14 +45,14 @@ describe('Routes', () => {
     ).toBeInTheDocument();
   });
 
-  it('uses fallbackRoute to visit the current url for an unmatched path', () => {
+  it('uses fallbackRoute to visit the current url for an unmatched path', async () => {
     const { history } = renderAppSwitcher(
       '/upgrade',
       <p>Router extra content</p>
     );
 
     expect(
-      screen.getByRole('heading', { name: 'Foreman upgrade' })
+      await screen.findByRole('heading', { name: 'Foreman upgrade' })
     ).toBeInTheDocument();
     expect(visit).not.toHaveBeenCalled();
 

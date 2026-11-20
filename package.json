@@ -24,7 +24,8 @@
     "stylelint:plugins": "./script/npm_stylelint_plugins.js",
     "publish-coverage": "tfm-publish-coverage",
     "postinstall": "./script/npm_install_plugins.js",
-    "analyze": "./script/webpack-analyze"
+    "analyze": "./script/webpack-analyze",
+    "check:plugin-exports": "node ./script/check_plugin_exports.js"
   },
   "dependencies": {
     "@apollo/client": "^3.3.7",

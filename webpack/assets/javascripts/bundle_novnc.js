@@ -1,11 +1,12 @@
 /* eslint-disable jquery/no-data */
 /* eslint-disable jquery/no-attr */
 
-import RFB from '@novnc/novnc/core/rfb';
 import $ from 'jquery';
 import { sprintf, translate as __ } from './react_app/common/I18n';
+import { loadModule } from './react_app/common/lazyModule';
 
 let rfb;
+const loadRfb = () => import('@novnc/novnc/core/rfb');
 const StatusLevelLookup = {
   failed: 'danger',
   fatal: 'danger',
@@ -63,10 +64,17 @@ function onClose(e) {
     );
   }
 }
-$(document).on('ContentLoad', () => {
+$(document).on('ContentLoad', async () => {
   const vncScreen = $('#noVNC_screen');
 
   if (vncScreen.length) {
+    let RFB;
+    try {
+      ({ default: RFB } = await loadModule(loadRfb));
+    } catch (e) {
+      showStatus('fatal', __('Failed to load the console'));
+      return;
+    }
     $('#sendCtrlAltDelButton').on('click', sendCtrlAltDel);
     const protocol = $('#vnc').data('encrypt') ? 'wss' : 'ws';
     const host = $('#vnc').attr('data-host') || window.location.hostname;

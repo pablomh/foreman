@@ -79,6 +79,7 @@ module.exports = {
           'href',
           'hypervisor',
           'i386',
+          'Impl',
           'internets',
           'ip6',
           'IPv4',

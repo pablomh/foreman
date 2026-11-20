@@ -32,10 +32,33 @@ import './foreman_overrides';
 import './bundle_novnc';
 
 // Set the public path for dynamic imports
-if (process.env.NODE_ENV !== 'production') {
-  /* eslint-disable-next-line */
-  __webpack_public_path__ = `${window.location.protocol}//${window.location.hostname}:3808/webpack/`;
-}
+/* eslint-disable-next-line */
+__webpack_public_path__ = `${window.URL_PREFIX || ''}/webpack/`;
+
+const wrapPluginExports = () => {
+  const exported = window.TheForeman && window.TheForeman.reactExports;
+  if (!exported) return;
+  const reported = new Set();
+  window.TheForeman.reactExports = new Proxy(exported, {
+    get(target, property, receiver) {
+      if (
+        typeof property === 'string' &&
+        property !== 'then' &&
+        !(property in target) &&
+        !reported.has(property)
+      ) {
+        reported.add(property);
+        // eslint-disable-next-line no-console
+        console.warn(
+          `foremanReact export "${property}" is not part of the plugin API`
+        );
+      }
+      return Reflect.get(target, property, receiver);
+    },
+  });
+};
+
+wrapPluginExports();
 
 window.tfm = Object.assign(window.tfm || {}, {
   authSource,

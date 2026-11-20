@@ -6,7 +6,7 @@ import {
   mockChartConfig,
   emptyChartConfig,
 } from './DonutChart.fixtures';
-import DonutChart from './';
+import DonutChart from './DonutChartImpl';
 import * as chartService from '../../../../../services/charts/DonutChartService';
 
 // Mock the DonutChartService

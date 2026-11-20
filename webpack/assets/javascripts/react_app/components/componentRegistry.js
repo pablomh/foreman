@@ -1,5 +1,6 @@
 import React from 'react';
 import forceSingleton from '../common/forceSingleton';
+import { lazyComponent } from './common/LazyComponent';
 
 import ReactApp from '../Root/ReactApp';
 import AreaChart from './common/charts/AreaChart';
@@ -15,7 +16,6 @@ import IsoDate from './common/dates/IsoDate';
 import FormField from './common/forms/FormField';
 import InputFactory from './common/forms/InputFactory';
 import StorageContainer from './hosts/storage/vmware/';
-import PasswordStrength from './PasswordStrength';
 import BreadcrumbBar from './BreadcrumbBar';
 import Pagination from './Pagination';
 import SearchBar from './SearchBar';
@@ -28,7 +28,6 @@ import ConfigReports from './ConfigReports/ConfigReports';
 import DiffModal from './ConfigReports/DiffModal';
 import { WrapperFactory } from './wrapperFactory';
 import TemplateGenerator from './TemplateGenerator';
-import Editor from './Editor';
 import LoginPage from './LoginPage';
 import ExternalLogout from './ExternalLogout';
 import Slot from './common/Slot';
@@ -43,6 +42,12 @@ import { WelcomeAuthSource } from './AuthSource/Welcome';
 import { WelcomeConfigReports } from './ConfigReports/Welcome';
 import { WelcomeArchitecture } from './Architectures/Welcome';
 import JwtTokens from './users/JwtTokens/JwtTokens';
+
+const PasswordStrength = lazyComponent(
+  () => import('./PasswordStrength'),
+  'PasswordStrength'
+);
+const Editor = lazyComponent(() => import('./Editor'), 'Editor');
 
 const componentRegistry = {
   registry: forceSingleton('component_registry', () => ({})),

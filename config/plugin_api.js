@@ -1,0 +1,105 @@
+/* eslint-disable */
+
+// Default-deny plugin API: only the modules listed here are exported as
+// foremanReact/*. Everything else under react_app is internal. New pages and
+// applications need no entry; add a path only when it is an extension point.
+// Entries name one module each: list the index file explicitly rather than the
+// directory, so adding a sibling module cannot widen the API by accident.
+// Stale entries fail the build.
+module.exports = [
+  // Core services and state
+  'API',
+  'constants',
+  'history',
+  'permissions',
+  'Root/Context/ForemanContext',
+  'redux/API/APISelectors',
+  'redux/API/index',
+  'redux/index',
+  'redux/middlewares/IntervalMiddleware/IntervalConstants',
+  'redux/middlewares/IntervalMiddleware/IntervalSelectors',
+  'redux/middlewares/IntervalMiddleware/index',
+  'redux/reducers/registerReducer',
+
+  // Common helpers
+  'common/BulkModalStateHelper',
+  'common/HOC',
+  'common/I18n',
+  'common/MountingService',
+  'common/globalIdHelpers',
+  'common/helpers',
+  'common/hooks/API/APIHooks',
+  'common/hooks/Permissions/permissionHooks',
+  'common/urlHelpers',
+
+  // Shared components
+  'components/BreadcrumbBar/index',
+  'components/ChartBox/index',
+  'components/ColumnSelector/index',
+  'components/ConfirmModal/index',
+  'components/Head/index',
+  // lazy defaults kept for out-of-tree consumers; shipped plugins use the named exports
+  'components/HostDetails/ActionsBar/index',
+  'components/HostDetails/CardExpansionContext',
+  'components/HostDetails/DetailsCard/DefaultLoaderEmptyState',
+  'components/HostDetails/Tabs/ReportsTab/helpers',
+  'components/HostDetails/Tabs/ReportsTab/index',
+  'components/HostDetails/Templates/CardItem/CardTemplate/index',
+  'components/HostDetails/consts',
+  'components/HostsIndex/BulkActions/helpers',
+  'components/HostsIndex/Columns/core',
+  'components/HostsIndex/TableRowActions/core',
+  // lazy default kept for out-of-tree consumers; shipped plugins use the context
+  'components/HostsIndex/index',
+  'components/Layout/LayoutActions',
+  'components/Loading/index',
+  'components/PF4/Bookmarks/BookmarksActions',
+  'components/PF4/Bookmarks/BookmarksConstants',
+  'components/PF4/Bookmarks/BookmarksSelectors',
+  'components/PF4/Helpers/useTableSort',
+  'components/PF4/TableIndexPage/RowSelectTd',
+  'components/PF4/TableIndexPage/Table/SelectAllCheckbox/index',
+  'components/PF4/TableIndexPage/Table/Table',
+  'components/PF4/TableIndexPage/Table/TableHooks',
+  'components/PF4/TableIndexPage/Table/TableIndexHooks',
+  'components/PF4/TableIndexPage/Table/helpers',
+  'components/PF4/TableIndexPage/TableIndexPage',
+  'components/Pagination/index',
+  'components/PermissionDenied/index',
+  'components/SearchBar/SearchAutocomplete',
+  'components/SearchBar/index',
+  'components/ToastsList/index',
+  'components/ToastsList/slice',
+  'components/common/ActionButtons/ActionButtons',
+  'components/common/EmptyState/DefaultEmptyState',
+  'components/common/EmptyState/EmptyStatePattern',
+  'components/common/EmptyState/ResourceLoadFailedEmptyState',
+  'components/common/EmptyState/index',
+  'components/common/FieldConstructor/FieldConstructor',
+  'components/common/Fill/GlobalFill',
+  'components/common/LabelIcon/index',
+  'components/common/ModalProgressBar/index',
+  'components/common/OrderableDualListSelector/OrderableDualListSelector',
+  'components/common/SkeletonLoader/index',
+  'components/common/Slot/index',
+  // chart shells and helpers, imported by third-party plugins
+  'components/common/charts/AreaChart/AreaChartHelpers',
+  'components/common/charts/AreaChart/AreaChartPropTypes',
+  'components/common/charts/AreaChart/index',
+  'components/common/charts/BarChart/BarChartHtmlTooltip',
+  'components/common/charts/BarChart/index',
+  'components/common/charts/DonutChart/index',
+  'components/common/charts/helpers/LegendHelpers',
+  'components/common/dates/IsoDate',
+  'components/common/dates/LongDateTime',
+  'components/common/dates/RelativeDateTime',
+  'components/componentRegistry',
+
+  // Routing
+  'routes/Hosts/constants',
+  'routes/RouterSelector',
+  'routes/RoutingService',
+  'routes/common/EmptyPage/index',
+  'routes/common/PageLayout/PageLayout',
+  'routes/common/reducerHOC/withDataReducer',
+];

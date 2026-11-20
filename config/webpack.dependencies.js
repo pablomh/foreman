@@ -1,6 +1,14 @@
 /* eslint-disable */
 
-module.exports = [
+const packageJson = require('../package.json');
+
+const allDependencies = {
+  ...packageJson.dependencies,
+  ...packageJson.devDependencies,
+};
+
+// Modules loaded eagerly into the vendor entry, in addition to the shared scope.
+const vendorEntry = [
   'intl',
   /**
    * React related
@@ -12,13 +20,11 @@ module.exports = [
   'regenerator-runtime/runtime',
   'formik',
   'react',
-  'react-ace',
   'react-dom',
   'react-dnd',
   'react-dnd-html5-backend',
   'react-diff-view',
   'react-onclickoutside',
-  'react-password-strength',
   'react-router-dom',
   'react-router-bootstrap',
   'react-loading-skeleton',
@@ -43,26 +49,7 @@ module.exports = [
   '@patternfly/react-table',
   '@patternfly/react-tokens',
   '@patternfly/react-styles',
-  '@patternfly/react-charts',
   '@patternfly/react-templates',
-
-  /**
-   * ace-builds related
-   */
-  'ace-builds',
-  'ace-builds/src-noconflict/ace',
-  'ace-builds/src-noconflict/ext-language_tools',
-  'ace-builds/src-noconflict/mode-ruby',
-  'ace-builds/src-noconflict/mode-json',
-  'ace-builds/src-noconflict/mode-sh',
-  'ace-builds/src-noconflict/mode-html_ruby',
-  'ace-builds/src-noconflict/mode-xml',
-  'ace-builds/src-noconflict/mode-yaml',
-  'ace-builds/src-noconflict/theme-github',
-  'ace-builds/src-noconflict/theme-monokai',
-  'ace-builds/src-noconflict/keybinding-vim',
-  'ace-builds/src-noconflict/keybinding-emacs',
-  'ace-builds/src-min-noconflict/ext-searchbox',
 
   /**
    * UUID
@@ -90,18 +77,58 @@ module.exports = [
   'yup',
   'select2',
   'multiselect',
-  '@novnc/novnc/core/rfb',
   'sanitize-html',
 
   /*
    * for rh_cloud
    * /index is a workaround until we find a better way
-  */
+   */
   'unleash-proxy-client',
   '@unleash/proxy-client-react',
   '@scalprum/core/index',
   '@scalprum/react-core/index',
-
-  // '@webcomponents/webcomponentsjs/webcomponents-bundle',
-  // '@webcomponents/webcomponentsjs/custom-elements-es5-adapter',
 ];
+
+// Shared modules the plugin scope may provide lazily. A package listed here
+// must not be imported synchronously by core exports or plugin entries.
+const nonEager = [
+  '@novnc/novnc',
+  '@spice-project/spice-html5',
+  'react-password-strength',
+  'ace-builds',
+  'react-ace',
+];
+
+const packageName = request =>
+  request.startsWith('@')
+    ? request
+        .split('/')
+        .slice(0, 2)
+        .join('/')
+    : request.split('/')[0];
+
+const unique = values => [...new Set(values)];
+
+const unknown = unique(
+  [...vendorEntry, ...nonEager]
+    .map(packageName)
+    .filter(name => !allDependencies[name])
+);
+if (unknown.length) {
+  throw new Error(
+    `webpack dependency lists reference unknown packages: ${unknown.join(', ')}`
+  );
+}
+
+const conflicting = unique(
+  vendorEntry.map(packageName).filter(name => nonEager.includes(name))
+);
+if (conflicting.length) {
+  throw new Error(
+    `packages cannot be both vendor entries and non-eager: ${conflicting.join(
+      ', '
+    )}`
+  );
+}
+
+module.exports = { vendorEntry, nonEager, packageName, allDependencies };

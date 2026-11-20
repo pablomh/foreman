@@ -5,7 +5,8 @@ import * as ReactRedux from 'react-redux';
 import configureMockStore from 'redux-mock-store';
 import thunk from 'redux-thunk';
 import '@testing-library/jest-dom';
-import HostsIndex, { getScheduleJobSearch } from './index';
+import HostsIndex from './HostsIndexPage';
+import { getScheduleJobSearch } from './index';
 import { useForemanPermissions } from '../../Root/Context/ForemanContext';
 
 const mockStore = configureMockStore([thunk]);

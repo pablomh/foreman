@@ -11,7 +11,8 @@ import {
 
 import { translate as __ } from '../../../common/I18n';
 import EmptyState from '../EmptyState';
-import { foremanUrl } from '../../../common/helpers';
+import { foremanUrl, reloadPage } from '../../../common/helpers';
+import { shouldReloadForChunkError } from '../../../common/chunkLoadRetry';
 import './index.scss';
 
 class ErrorBoundary extends React.Component {
@@ -29,6 +30,14 @@ class ErrorBoundary extends React.Component {
   }
 
   componentDidCatch(error, info) {
+    if (
+      error &&
+      error.name === 'ChunkLoadError' &&
+      shouldReloadForChunkError()
+    ) {
+      reloadPage();
+      return;
+    }
     this.setState({ hasError: true, error, info });
   }
 
@@ -37,7 +46,7 @@ class ErrorBoundary extends React.Component {
     const { hasError, error, info } = this.state;
 
     if (!hasError) return children;
-    if (fallback) return fallback();
+    if (fallback) return fallback({ error, info });
 
     const description = (
       <>
@@ -64,10 +73,9 @@ class ErrorBoundary extends React.Component {
       </>
     );
 
-    const action = {
-      title: __('Return to last page'),
-      onClick: history.goBack,
-    };
+    const action = history
+      ? { title: __('Return to last page'), onClick: history.goBack }
+      : undefined;
 
     return (
       <Grid className="error-boundary-foreman-app">

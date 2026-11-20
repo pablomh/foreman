@@ -1,16 +1,31 @@
 import ReactDOM from 'react-dom';
 import React from 'react';
 import { AwaitedMount } from './AwaitedMount';
+import ErrorBoundary from '../components/common/ErrorBoundary';
+import { translate as __ } from './I18n';
 
 export { default as registerReducer } from '../redux/reducers/registerReducer';
 
 function mountNode(component, reactNode, data, flattenData) {
   ReactDOM.render(
-    <AwaitedMount
-      component={component}
-      data={data}
-      flattenData={flattenData}
-    />,
+    <ErrorBoundary
+      fallback={({ error }) => (
+        <div className="error-boundary-foreman-app">
+          <p>
+            {__(
+              'This component could not be loaded. Reload the page to try again.'
+            )}
+          </p>
+          <pre>{String(error)}</pre>
+        </div>
+      )}
+    >
+      <AwaitedMount
+        component={component}
+        data={data}
+        flattenData={flattenData}
+      />
+    </ErrorBoundary>,
     reactNode
   );
 }

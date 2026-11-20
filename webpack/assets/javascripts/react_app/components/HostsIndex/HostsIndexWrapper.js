@@ -1,6 +1,6 @@
 import React from 'react';
 import Permitted from '../Permitted/Permitted';
-import HostsIndex from './index';
+import HostsIndex from './HostsIndexPage';
 
 const REQUIRED_PERMISSIONS = ['view_hosts'];
 

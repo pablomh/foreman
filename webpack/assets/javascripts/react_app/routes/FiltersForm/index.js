@@ -8,11 +8,9 @@ export default [
   {
     path: FILTERS_PATH_NEW,
     render: props => <NewFiltersFormPage data={{}} {...props} />,
-    exact: true,
   },
   {
     path: FILTERS_PATH_EDIT,
     render: props => <EditFiltersFormPage {...props} />,
-    exact: true,
   },
 ];

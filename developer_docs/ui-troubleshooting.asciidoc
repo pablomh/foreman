@@ -37,6 +37,8 @@ If you've recently updated the Foreman version or code and your changes aren't v
 
 * `FATAL ERROR: Ineffective mark-compacts near heap limit Allocation failed - JavaScript heap out of memory` Try running the webpack compilation seperetly with `NODE_OPTIONS='--max-old-space-size=8192' bundle exec foreman start webpack`
 
-* `consumes:64 Uncaught (in promise) Error: Shared module X doesn't exist in shared scope default` Is caused by adding a package to package.json and forgetting to add it to config/webpack.vendor.js.
+* `consumes:64 Uncaught (in promise) Error: Shared module X doesn't exist in shared scope default` Is caused by adding a package to package.json and forgetting to list it in config/webpack.dependencies.js.
 
-* `Uncaught ReferenceError: __webpack_exports__ is not defined` is caused by wrong entry point in webpack.vendor.js. It might be a typo, or that the package export is not exported from the package name. (For example @scalprum/core should be @scalprum/core/index)
+* `Shared module is not available for eager consumption` Is caused by listing a package in the `nonEager` list of config/webpack.dependencies.js while some eagerly imported code (core exports or a plugin entry) imports it synchronously. Move it to `vendorEntry`, or load it with `import()`.
+
+* `Uncaught ReferenceError: __webpack_exports__ is not defined` is caused by a wrong entry point in the `vendorEntry` list of config/webpack.dependencies.js. It might be a typo, or that the package export is not exported from the package name. (For example @scalprum/core should be @scalprum/core/index)
